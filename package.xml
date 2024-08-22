@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>hardware-integration</name>
+  <name>hardware_integration</name>
   <version>0.0.0</version>
   <description>AEAC hardware integration package</description>
 
