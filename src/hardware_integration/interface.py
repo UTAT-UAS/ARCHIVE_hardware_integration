@@ -88,17 +88,15 @@ class HardwareInterface:
 
         self._offb_set_mode = SetModeRequest()
         self._offb_set_mode.custom_mode = 'OFFBOARD'
-
         self._arm_cmd = CommandBoolRequest()
         self._arm_cmd.value = True
-
         self._last_req = rospy.Time.now()
 
+        self._wait_for_offboard_and_arm()
+
+        self.set_horizontal_velocity(self.start_cruise_velocity)  # Cruise Velocity
         self._set_start_pose()
         self.target_pose = copy.deepcopy(self.start_pose)
-        self.set_horizontal_velocity(self.start_cruise_velocity)  # Cruise Velocity
-
-        self._wait_for_offboard_and_arm()
 
         self._set_internal_state("initialized")
         print("Interface initialized")
