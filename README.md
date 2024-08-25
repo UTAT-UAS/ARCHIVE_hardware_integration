@@ -4,7 +4,7 @@ ROS package for AEAC hardware integration
 
 ## Development Philosophy
 
-Everything here handles integration with hardware/sim. The rest of the libraries should never have to touch hardware raw.
+Everything here handles integration with hardware. Creates ROS nodes that publish to a topic for consumption by the flight stack.
 
 ## TODO
 
@@ -12,8 +12,3 @@ Everything here handles integration with hardware/sim. The rest of the libraries
     - depth.ai camera on drone
     - rfd link
         - actual rfd transmission scheme
-- Improve sim debugging
-    - movable markers
-        - visualize position tracking etc.
-    - remotely move drone/objects
-    - add comp objects (hanging bucket, ir thingies)
