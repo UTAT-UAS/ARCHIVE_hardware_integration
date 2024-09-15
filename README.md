@@ -4,7 +4,9 @@ ROS package for AEAC hardware integration
 
 ## Development Philosophy
 
-Everything here handles integration with hardware. Creates ROS nodes that publish to a topic for consumption by the flight stack.
+Everything here handles integration with hardware. Creates ROS nodes that publish to a topic for consumption by the flight stack, or subscribe to a topic for forwarding to hardware. (potentially services as well)
+
+Ideally the `Controller` (and flight stack code in general) should care as little as possible wether they are running in simulation or on the real drone. By creating hardware interfaces here we can limit the points at which the software directly touches real hardware (a huge source of pain and suffering).
 
 ## TODO
 
