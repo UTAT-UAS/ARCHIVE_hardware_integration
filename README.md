@@ -11,14 +11,13 @@ Ideally the `Controller` (and flight stack code in general) should care as littl
 ## TODO
 
 - Integrate new hardware
-    - depth.ai camera on drone
-    - rfd link
-        - actual rfd transmission scheme
-        - align with webviewer to allow monitoring of the actual drone
-    - any new hardware needed for comp
-- System to control the jetson
-    - currently stuff on jetson must be started via entering it with ssh
-        - then starting ros nodes manually
-        - also ensure codebase works outside of container (e.g. no aboslute paths anywhere)
-    - create system to control with purely rfd commands
-    - if too difficult automate most of the process, (e.g. automatically create tmux session on boot and try to connect to mavros)
+    For example, ongoing projects include:
+    - 5G data link
+    - Camera and sensor integration
+- Automation 
+    - Ros nodes need to be started manually from seperate launch files. Responsible for streamlining it for pushing to the Jetson nano
+    - Creating and researching services we can start from the nano to enable hardware interfaces (like a vpn service)
+
+- Integration with Jetson Nano
+    - Ensure codebase works outside of container (e.g. no aboslute paths anywhere)
+    - Testing hardware with HITL + Pixhawk to ensure everything runs smoothly
