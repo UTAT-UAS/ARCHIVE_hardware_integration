@@ -6,7 +6,7 @@ ROS package for AEAC hardware integration
 
 Everything here handles integration with hardware. Creates ROS nodes that publish to a topic for consumption by the flight stack, or subscribe to a topic for forwarding to hardware. (potentially services as well)
 
-Ideally the `Controller` (and flight stack code in general) should care as little as possible wether they are running in simulation or on the real drone. By creating hardware interfaces here we can limit the points at which the software directly touches real hardware (a huge source of pain and suffering). Because of the rapid development process and prototyping in this team, we will mostly use Python to demonstrate proof of concept. After that I would encourage the use of C++ since it offers efficiency, especially to the jetson nano (which has a horribly slow cpu). 
+Ideally the `Controller` (and flight stack code in general) should care as little as possible wether they are running in simulation or on the real drone. By creating hardware interfaces here we can limit the points at which the software directly touches real hardware (a huge source of pain and suffering). I encourage the use of C++ since it offers efficiency, especially to embedded devices such as the Raspberry Pi since it has a much slower CPU for tasks. Ideally, hardware should slow down the stack as little as possible. 
 
 ## TODO
 
@@ -15,9 +15,8 @@ Ideally the `Controller` (and flight stack code in general) should care as littl
     - 5G data link
     - Camera and sensor integration
 - Automation 
-    - ROS nodes need to be started manually from seperate launch files. Responsible for streamlining it for pushing to the Jetson nano
+    - ROS nodes need to be started manually from seperate launch files. Responsible for streamlining it for pushing to the embedded device.
     - Creating and researching services we can start from the nano to enable hardware interfaces (like a vpn service)
 
-- Integration with Jetson Nano
-    - Ensure codebase works outside of container (e.g. no aboslute paths anywhere)
-    - Testing hardware with HITL + Pixhawk to ensure everything runs smoothly
+- Integration with Embedded Systems
+    - Ensure codebase works outside of container (e.g. no absolute paths anywhere)
