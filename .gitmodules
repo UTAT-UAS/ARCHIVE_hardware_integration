@@ -1,0 +1,6 @@
+[submodule "src/gstreamer-ros-bridge"]
+	path = src/gstreamer-ros-bridge
+	url = https://github.com/tommyzhng/gstreamer-ros-bridge
+[submodule "packages/gstreamer-ros-bridge"]
+	path = packages/gstreamer-ros-bridge
+	url = https://github.com/tommyzhng/gstreamer-ros-bridge
