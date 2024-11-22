@@ -1,0 +1,4 @@
+[submodule "packages/gstreamer-ros-bridge"]
+	path = packages/gstreamer-ros-bridge
+	url = https://github.com/tommyzhng/gstreamer-ros-bridge
+	branch = main
