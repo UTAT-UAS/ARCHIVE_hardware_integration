@@ -2,3 +2,7 @@
 	path = packages/gstreamer-ros-bridge
 	url = https://github.com/tommyzhng/gstreamer-ros-bridge
 	branch = main
+[submodule "packages/ros-antenna-tracker"]
+	path = packages/ros-antenna-tracker
+	url = https://github.com/tommyzhng/ros-antenna-tracker
+	branch = main
