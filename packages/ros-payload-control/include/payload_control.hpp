@@ -1,9 +1,8 @@
 #ifndef PAYLOAD_CONTROL_HPP
 #define PAYLOAD_CONTROL_HPP
 
-
-#include <Arduino.h>
 #include <Servo.h>
+#include <Arduino.h>
 #include <ros.h>
 #include <std_msgs/Float32.h>
 
@@ -30,7 +29,7 @@ private:
 
     //msg variables
     float servoSetpoint_{0}; // position
-    float servoOutput_{90};  // velocity
+    float servoOutput_{0};  // velocity
     float encoderRaw_{0}; // read from encoders
     float encoderLen_{0};
     float conversion_ = 2 * PI * 0.5 * (1.0 / 20);
@@ -42,17 +41,20 @@ private:
     ros::Publisher encoderLenPub_;
 
     // servos
-    Servo pldServo_;
+    int servoPin_ = 9;
+    void servoAttach();
+    void servoWrite(float rps);
 
     // encoder
     int pinA_ = 3;
     int pinB_ = 4;
     int lastA_{0};
 
+    
     // pid control
     float kp_{1};  
     float kd_;
-    float max_{180};
+    float maxSpd_{5.759};  // 5.759 rad/s at max speed
 
     float prevError_;
     float curError_;
