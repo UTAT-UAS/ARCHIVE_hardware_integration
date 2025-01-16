@@ -1,10 +1,10 @@
 #ifndef PAYLOAD_CONTROL_HPP
 #define PAYLOAD_CONTROL_HPP
 
-#include <Servo.h>
 #include <Arduino.h>
 #include <ros.h>
 #include <std_msgs/Float32.h>
+#include <Rotary.h>
 
 class PayloadControl
 {
@@ -32,7 +32,7 @@ private:
     float servoOutput_{0};  // velocity
     float encoderRaw_{0}; // read from encoders
     float encoderLen_{0};
-    float conversion_ = 2 * PI * 0.5 * (1.0 / 20);
+    float conversion_ = 2 * PI * 0.02 * (1.0 / 20);
 
     // ROS
     ros::NodeHandle_<ArduinoHardware, 1, 5, 150, 150> nh_;
@@ -46,18 +46,20 @@ private:
     void servoWrite(float rps);
 
     // encoder
-    int pinA_ = 3;
-    int pinB_ = 4;
-    int lastA_{0};
+    int pinA_ = 2;
+    int pinB_ = 3;
+    Rotary encoder_ = Rotary(pinA_, pinB_);
 
     
-    // pid control
-    float kp_{1};  
-    float kd_;
-    float maxSpd_{5.759};  // 5.759 rad/s at max speed
-
-    float prevError_;
+    // pd control
+    float kp_{25};  
+    //float kd_{1};
+    float ki_{2};
+    float dt_{0.033};  // 30 Hz
     float curError_;
+    float lastError_;
+    float integral_{0};
+    float maxSpd_{5.759};  // 5.759 rad/s at max speed
 
     static PayloadControl* instance_;
 

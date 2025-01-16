@@ -12,9 +12,8 @@ PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 1, 5, 150, 150>
     // servo setup
     PayloadControl::servoAttach();
     PayloadControl::servoWrite(0.0);
-
-    pinMode(pinA_, INPUT);
-    pinMode(pinB_, INPUT);
+    
+    attachInterrupt(digitalPinToInterrupt(pinA_), PayloadControl::EncoderISR, CHANGE);
     attachInterrupt(digitalPinToInterrupt(pinB_), PayloadControl::EncoderISR, CHANGE);
 
     // subs
@@ -47,8 +46,10 @@ void PayloadControl::PublishServoCommand()
 
 void PayloadControl::PublishEncoderFb()
 {
+    noInterrupts();
     encoderRawFbMsg_.data = encoderRaw_;
     encoderLenFbMsg_.data = encoderLen_;
+    interrupts();
 
     encoderRawPub_.publish(&encoderRawFbMsg_);
     encoderLenPub_.publish(&encoderLenFbMsg_);
@@ -58,14 +59,26 @@ void PayloadControl::ControlLoop()
 {
     // pd controller
     servoSetpoint_ = setpointMsg_.data;
+    noInterrupts();
     encoderLen_ = conversion_ * encoderRaw_; // convert to length
+    interrupts();
 
     curError_ = servoSetpoint_ - encoderLen_;  // length error
-    servoOutput_ = kp_ * curError_;
+    //float derivative = (curError_ - lastError_) / dt_;
+    servoOutput_ = kp_ * curError_ + ki_ * integral_;
+
+    // reset int and output if error is small
+    if (abs(curError_) < 0.01) {
+        servoOutput_ = 0;
+        integral_ = 0;
+    }    
 
     // clamping
     if (servoOutput_ >= maxSpd_) {servoOutput_ = maxSpd_;}
     else if (servoOutput_ <= -maxSpd_) {servoOutput_ = -maxSpd_;}
+    else {integral_ += curError_ * dt_;}
+
+    lastError_ = curError_;
 
     PayloadControl::servoWrite(servoOutput_);
 }
@@ -79,16 +92,12 @@ void PayloadControl::EncoderISR()
 
 void PayloadControl::HandleEncoder()
 {
-    int32_t currentA = digitalRead(pinA_);
-    int32_t currentB = digitalRead(pinB_);
-    if (currentA != lastA_) {
-        if (currentA == currentB) {
-            encoderRaw_++;  // Clockwise
-        } else {
-            encoderRaw_--;  // Counter-clockwise
-        }
+    unsigned char result = encoder_.process();
+    if (result == DIR_CW) {
+        encoderRaw_++;
+    } else if (result == DIR_CCW) {
+        encoderRaw_--;
     }
-    lastA_ = currentA;
 }
 
 void PayloadControl::servoAttach()
