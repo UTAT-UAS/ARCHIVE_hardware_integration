@@ -52,7 +52,7 @@ private:
 
     
     // pd control
-    float kp_{25};  
+    float kp_{30};  
     //float kd_{1};
     float ki_{2};
     float dt_{0.033};  // 30 Hz
