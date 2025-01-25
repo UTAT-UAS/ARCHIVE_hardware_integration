@@ -5,6 +5,8 @@
 #include <ros.h>
 #include <std_msgs/Float32.h>
 #include <Rotary.h>
+#include <Servo.h>
+
 
 class PayloadControl
 {
@@ -15,6 +17,7 @@ public:
 
 private:
     static void SetpointCb(const std_msgs::Float32 &msg);
+    static void HookCb(const std_msgs::Float32 &msg);
     void PublishServoCommand();
     void PublishEncoderFb();
     static void EncoderISR();
@@ -23,6 +26,7 @@ private:
 
     //messages
     static std_msgs::Float32 setpointMsg_;
+    static std_msgs::Float32 hookMsg_;
     std_msgs::Float32 servoVelMsg_;
     std_msgs::Float32 encoderRawFbMsg_;
     std_msgs::Float32 encoderLenFbMsg_;
@@ -41,9 +45,11 @@ private:
     ros::Publisher encoderLenPub_;
 
     // servos
-    int servoPin_ = 9;
-    void servoAttach();
-    void servoWrite(float rps);
+    int contServoPin_ = 9;
+    int hookServoPin_ = 10;
+    void contServoAttach();
+    void contServoWrite(float rps);
+    Servo hookServo_;
 
     // encoder
     int pinA_ = 2;
@@ -52,7 +58,7 @@ private:
 
     
     // pd control
-    float kp_{30};  
+    float kp_{25};  
     //float kd_{1};
     float ki_{2};
     float dt_{0.033};  // 30 Hz

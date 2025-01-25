@@ -10,15 +10,18 @@ PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 1, 5, 150, 150>
     nh_.initNode();
 
     // servo setup
-    PayloadControl::servoAttach();
-    PayloadControl::servoWrite(0.0);
+    PayloadControl::contServoAttach();
+    PayloadControl::contServoWrite(0.0);
+    hookServo_.attach(hookServoPin_);
     
     attachInterrupt(digitalPinToInterrupt(pinA_), PayloadControl::EncoderISR, CHANGE);
     attachInterrupt(digitalPinToInterrupt(pinB_), PayloadControl::EncoderISR, CHANGE);
 
     // subs
     ros::Subscriber<std_msgs::Float32>setpointSub_("/pld/servo_command", PayloadControl::SetpointCb);
+    ros::Subscriber<std_msgs::Float32>hookSub_("/pld/hook_command", PayloadControl::SetpointCb);
     nh_.subscribe(setpointSub_);
+    nh_.subscribe(hookSub_);
 
     // pubs
     nh_.advertise(servoVelocityPub_);
@@ -35,6 +38,11 @@ PayloadControl::~PayloadControl()
 void PayloadControl::SetpointCb(const std_msgs::Float32 &msg)
 {
     setpointMsg_ = msg;
+}
+
+void PayloadControl::HookCb(const std_msgs::Float32 &msg)
+{
+    hookMsg_ = msg;
 }
 
 void PayloadControl::PublishServoCommand()
@@ -57,7 +65,7 @@ void PayloadControl::PublishEncoderFb()
 
 void PayloadControl::ControlLoop()
 {
-    // pd controller
+    // pi controller
     servoSetpoint_ = setpointMsg_.data;
     noInterrupts();
     encoderLen_ = conversion_ * encoderRaw_; // convert to length
@@ -77,10 +85,12 @@ void PayloadControl::ControlLoop()
     if (servoOutput_ >= maxSpd_) {servoOutput_ = maxSpd_;}
     else if (servoOutput_ <= -maxSpd_) {servoOutput_ = -maxSpd_;}
     else {integral_ += curError_ * dt_;}
-
     lastError_ = curError_;
+    constrain(hookMsg_.data, 0, 1);
 
-    PayloadControl::servoWrite(servoOutput_);
+    // write to servos
+    hookServo_.write(hookMsg_.data * 90);
+    PayloadControl::contServoWrite(servoOutput_);
 }
 
 void PayloadControl::EncoderISR()
@@ -100,9 +110,9 @@ void PayloadControl::HandleEncoder()
     }
 }
 
-void PayloadControl::servoAttach()
+void PayloadControl::contServoAttach()
 { 
-    pinMode(servoPin_, OUTPUT);
+    pinMode(contServoPin_, OUTPUT);
 
     // this setup sets the pin timer to 50 Hz and is only valid for 16 MHz clock
     TCCR1A = 0;  // Clear Timer1 control register A
@@ -115,7 +125,7 @@ void PayloadControl::servoAttach()
     TCCR1A |= (1 << COM1A1);         // Non-inverting mode on pin 9
 }
 
-void PayloadControl::servoWrite(float rps)
+void PayloadControl::contServoWrite(float rps)
 {
     int us = 1000 + ((rps - (-maxSpd_)) * (2000 - 1000)) / (maxSpd_*2);
 	if (us < 1000) us = 1000;
