@@ -6,6 +6,7 @@ PayloadControl *pld = nullptr;
 
 // define some static vars
 std_msgs::Float32 PayloadControl::setpointMsg_;
+std_msgs::Float32 PayloadControl::hookMsg_;
 PayloadControl* PayloadControl::instance_ = nullptr;
 
 const unsigned int rate = 30;    
