@@ -5,13 +5,13 @@
 #include <ros.h>
 #include <std_msgs/Float32.h>
 #include <Rotary.h>
-#include <Servo.h>
+#include <ServoTimer2.h>
 
 
 class PayloadControl
 {
 public:
-    PayloadControl(ros::NodeHandle_<ArduinoHardware, 1, 5, 150, 150>&nh);
+    PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150>&nh);
     ~PayloadControl();
     void Update();
 
@@ -39,17 +39,17 @@ private:
     float conversion_ = 2 * PI * 0.02 * (1.0 / 20);
 
     // ROS
-    ros::NodeHandle_<ArduinoHardware, 1, 5, 150, 150> nh_;
+    ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150> nh_;
     ros::Publisher servoVelocityPub_;
     ros::Publisher encoderRawPub_;
     ros::Publisher encoderLenPub_;
 
     // servos
     int contServoPin_ = 9;
-    int hookServoPin_ = 10;
+    int hookServoPin_ = 11;
     void contServoAttach();
     void contServoWrite(float rps);
-    Servo hookServo_;
+    ServoTimer2 hookServo_;
 
     // encoder
     int pinA_ = 2;

@@ -1,6 +1,6 @@
 #include "payload_control.hpp"
 
-PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 1, 5, 150, 150> &nh)
+PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150> &nh) 
  : nh_(nh), servoVelocityPub_("/pld/servo_sent", &servoVelMsg_), 
  encoderRawPub_("/pld/encoder_raw", &encoderRawFbMsg_), 
  encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_)
@@ -19,7 +19,7 @@ PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 1, 5, 150, 150>
 
     // subs
     ros::Subscriber<std_msgs::Float32>setpointSub_("/pld/servo_command", PayloadControl::SetpointCb);
-    ros::Subscriber<std_msgs::Float32>hookSub_("/pld/hook_command", PayloadControl::SetpointCb);
+    ros::Subscriber<std_msgs::Float32>hookSub_("/pld/hook_command", PayloadControl::HookCb);
     nh_.subscribe(setpointSub_);
     nh_.subscribe(hookSub_);
 

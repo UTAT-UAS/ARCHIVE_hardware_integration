@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "payload_control.hpp"
 
-ros::NodeHandle_<ArduinoHardware, 1, 5, 150, 150>  nh;
+ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150>  nh;
 PayloadControl *pld = nullptr;
 
 // define some static vars
