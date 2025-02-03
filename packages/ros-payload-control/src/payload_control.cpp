@@ -3,7 +3,9 @@
 PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150> &nh) 
  : nh_(nh), servoVelocityPub_("/pld/servo_sent", &servoVelMsg_), 
  encoderRawPub_("/pld/encoder_raw", &encoderRawFbMsg_), 
- encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_)
+ encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_),
+ stateMsgPub_("/pld/state_fb", &stateMsg_),
+ operationDonePub_("/pld/op_done", &operationDoneMsg_)
 {
     // hardware setup
     nh_.getHardware()->setBaud(57600);
@@ -18,10 +20,10 @@ PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150>
     attachInterrupt(digitalPinToInterrupt(pinB_), PayloadControl::EncoderISR, CHANGE);
 
     // subs
-    ros::Subscriber<std_msgs::Float32>setpointSub_("/pld/servo_command", PayloadControl::SetpointCb);
-    ros::Subscriber<std_msgs::Float32>hookSub_("/pld/hook_command", PayloadControl::HookCb);
+    ros::Subscriber<std_msgs::Float32>setpointSub_("/pld/manual_command", PayloadControl::SetpointCb);
+    ros::Subscriber<std_msgs::Int32>stateSub_("/pld/state_command", PayloadControl::RecieveStateCb);
     nh_.subscribe(setpointSub_);
-    nh_.subscribe(hookSub_);
+    //nh_.subscribe(hookSub_);
 
     // pubs
     nh_.advertise(servoVelocityPub_);
@@ -33,45 +35,14 @@ PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150>
 
 PayloadControl::~PayloadControl()
 {
+    
 }
 
-void PayloadControl::SetpointCb(const std_msgs::Float32 &msg)
-{
-    setpointMsg_ = msg;
-}
-
-void PayloadControl::HookCb(const std_msgs::Float32 &msg)
-{
-    hookMsg_ = msg;
-}
-
-void PayloadControl::PublishServoCommand()
-{
-    // ros
-    servoVelMsg_.data = servoOutput_;
-    servoVelocityPub_.publish(&servoVelMsg_); 
-}
-
-void PayloadControl::PublishEncoderFb()
-{
-    noInterrupts();
-    encoderRawFbMsg_.data = encoderRaw_;
-    encoderLenFbMsg_.data = encoderLen_;
-    interrupts();
-
-    encoderRawPub_.publish(&encoderRawFbMsg_);
-    encoderLenPub_.publish(&encoderLenFbMsg_);
-}
-
-void PayloadControl::ControlLoop()
+void PayloadControl::ControlLoop(float lenSetpoint, float hookSetpoint)
 {
     // pi controller
-    servoSetpoint_ = setpointMsg_.data;
-    noInterrupts();
-    encoderLen_ = conversion_ * encoderRaw_; // convert to length
-    interrupts();
 
-    curError_ = servoSetpoint_ - encoderLen_;  // length error
+    curError_ = lenSetpoint - encoderLen_;  // length error
     //float derivative = (curError_ - lastError_) / dt_;
     servoOutput_ = kp_ * curError_ + ki_ * integral_;
 
@@ -86,59 +57,118 @@ void PayloadControl::ControlLoop()
     else if (servoOutput_ <= -maxSpd_) {servoOutput_ = -maxSpd_;}
     else {integral_ += curError_ * dt_;}
     lastError_ = curError_;
-    constrain(hookMsg_.data, 0, 1);
+    hookSetpoint = constrain(hookSetpoint, 0, 1);
 
     // write to servos
-    hookServo_.write(hookMsg_.data * 90);
+    hookServo_.write(hookSetpoint * 90);
     PayloadControl::contServoWrite(servoOutput_);
 }
 
-void PayloadControl::EncoderISR()
+void PayloadControl::SwitchState(State state)
 {
-    if (instance_) {
-        instance_->HandleEncoder();
+    state_ = state;
+}
+
+void PayloadControl::UpdatePayload()
+{
+    // op code & state machine
+    switch (operation_)
+    {
+        case OPCODE::STOPPED:
+
+            PayloadControl::contServoWrite(0);
+            SwitchState(State::IDLE);
+            operationDone_ = true;
+            break;
+
+        case OPCODE::PICKUP:
+            operationDone_ = false;
+            switch (state_)
+            {
+                case State::IDLE:
+                    PayloadControl::contServoWrite(0);
+                    SwitchState(State::UNSPOOL);    
+                    break;
+                case State::UNSPOOL:
+                    // if the encoder has reached the desired length with tolerances
+                    ControlLoop(pickupLen_, 0);
+                    if (abs(pickupLen_ - encoderLen_) < 0.2) {
+                        waitTimerStart_ = millis();
+                        SwitchState(State::WAIT);
+                    }
+                    break;
+                case State::WAIT:
+                    ControlLoop(pickupLen_, 0);
+                    if (millis() - waitTimerStart_ >= pickupTime_ * 1000) {
+                        SwitchState(State::RESPOOL);
+                    }
+                    break;
+                case State::RESPOOL:
+                    ControlLoop(-0.1, 0);  // go back to 0 height
+                    if (abs(-0.1 - encoderLen_) < 0.5 && force_ != 0) { // if force is detected, stop
+                        operation_ = OPCODE::STOPPED;
+                        operationDone_ = true;
+                        encoderRaw_ = 0;
+                    }
+                    break;
+            }
+
+            break;
+        case OPCODE::DISPENSE:
+            operationDone_ = false;
+            switch (state_)
+            {
+                case State::IDLE:
+                    // enable hook servo
+                    ControlLoop(encoderLen_, 1);
+                    SwitchState(State::UNSPOOL);    
+                    waitTimerStart_ = millis();
+                    break;
+                case State::UNSPOOL:
+                    // wait for hook dynamics
+                    if (millis() - waitTimerStart_ <= 1000) {
+                        break;
+                    }
+                    ControlLoop(dispenseLen_, 1);
+                    if (abs(dispenseLen_ - encoderLen_) < 0.2) {
+                        waitTimerStart_ = millis();
+                        SwitchState(State::WAIT);
+                    }
+                    break;
+                case State::WAIT:
+                    ControlLoop(dispenseLen_, 1);
+                    // logic here to check water levels
+
+                    break;
+                case State::RESPOOL:
+                    ControlLoop(-0.1, 1);  // go back to 0 height
+                    if (abs(-0.1 - encoderLen_) < 0.5 && force_ != 0) { // if force is detected, stop
+                        operation_ = OPCODE::STOPPED;
+                        operationDone_ = true;
+                        encoderRaw_ = 0;
+                    }
+                    break;
+            }
+            break;
+        case OPCODE::RESET:
+            ControlLoop(-0.1, 1);  // go back to 0 height
+            if (abs(-0.1 - encoderLen_) < 0.5 && force_ != 0) { // if force is detected, stop
+                operation_ = OPCODE::STOPPED;
+                encoderRaw_ = 0;
+                operationDone_ = true;
+            }
+            break;
+
+        case OPCODE::MANUAL:
+            ControlLoop(manualServoSetpoint_, 1);
+            break;
+        
+        default:
+            break;
     }
-}
-
-void PayloadControl::HandleEncoder()
-{
-    unsigned char result = encoder_.process();
-    if (result == DIR_CW) {
-        encoderRaw_++;
-    } else if (result == DIR_CCW) {
-        encoderRaw_--;
-    }
-}
-
-void PayloadControl::contServoAttach()
-{ 
-    pinMode(contServoPin_, OUTPUT);
-
-    // this setup sets the pin timer to 50 Hz and is only valid for 16 MHz clock
-    TCCR1A = 0;  // Clear Timer1 control register A
-    TCCR1B = 0;  // Clear Timer1 control register B
-    TCNT1 = 0;   // Initialize counter
-
-    ICR1 = 39999;  // Set TOP for 50 Hz (16 MHz / (8 * (39999 + 1))) 
-    TCCR1A = (1 << WGM11);           // Fast PWM, mode 14 (ICR1 is TOP)
-    TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11); // Prescaler 8
-    TCCR1A |= (1 << COM1A1);         // Non-inverting mode on pin 9
-}
-
-void PayloadControl::contServoWrite(float rps)
-{
-    int us = 1000 + ((rps - (-maxSpd_)) * (2000 - 1000)) / (maxSpd_*2);
-	if (us < 1000) us = 1000;
-	if (us > 2000) us = 2000;
-
-	uint32_t dutyCycle = (uint32_t) (us * 2); // converts microseconds to timer ticks (ICR1 = 400000 -> 20 ms / .5 us ticks)
-	OCR1A = dutyCycle;
-}
-
-void PayloadControl::Update()
-{
-    ControlLoop();
+    
     PublishServoCommand();
     PublishEncoderFb();
+    PublishOperationState();
     nh_.spinOnce();
 }

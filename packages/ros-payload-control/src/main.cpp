@@ -5,8 +5,6 @@ ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150>  nh;
 PayloadControl *pld = nullptr;
 
 // define some static vars
-std_msgs::Float32 PayloadControl::setpointMsg_;
-std_msgs::Float32 PayloadControl::hookMsg_;
 PayloadControl* PayloadControl::instance_ = nullptr;
 
 const unsigned int rate = 30;    
@@ -23,6 +21,6 @@ void loop() {
     if (current_time - last_time >= (1000/rate))
     {
         last_time = current_time;
-        pld->Update();
+        pld->UpdatePayload();
     }
 }
