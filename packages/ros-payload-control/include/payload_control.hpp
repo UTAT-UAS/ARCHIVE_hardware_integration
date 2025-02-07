@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <ros.h>
 #include <std_msgs/Float32.h>
-#include <std_msgs/Int32MultiArray.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/Bool.h>
 #include <Rotary.h>
@@ -13,31 +12,32 @@
 class PayloadControl
 {
 public:
-    PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150>&nh);
+    PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 80, 105> &nh);
     ~PayloadControl();
     void UpdatePayload();
 
 private:
     // ros //
     void PublishServoCommand();
-    void PublishEncoderFb();
     void PublishOperationState();
-    ros::NodeHandle_<ArduinoHardware, 5, 5, 150, 150> nh_;
+    void PublishSensorsFb();
+    ros::NodeHandle_<ArduinoHardware, 5, 5, 80, 105> nh_;
     ros::Publisher servoVelocityPub_;
-    ros::Publisher encoderRawPub_;
     ros::Publisher encoderLenPub_;
     ros::Publisher stateMsgPub_;
     ros::Publisher operationDonePub_;
+    ros::Publisher forcePub_;
 
-    std_msgs::Int32MultiArray stateMsg_;
+    std_msgs::Int32 stateMsg_;
     std_msgs::Bool operationDoneMsg_;
     std_msgs::Float32 servoVelMsg_;
-    std_msgs::Float32 encoderRawFbMsg_;
     std_msgs::Float32 encoderLenFbMsg_;
+    std_msgs::Float32 forceMsg_;
 
     // sensors feedback //
     static void EncoderISR();
     void HandleEncoder();
+    void ReadSensors();
     int pinA_ = 2;
     int pinB_ = 3;
     Rotary encoder_ = Rotary(pinA_, pinB_);
@@ -46,8 +46,12 @@ private:
     float conversion_ = 2 * PI * 0.02 * (1.0 / 20);
 
     // force sensor
-    float force_{0};  
 
+    float force_{0}; 
+    int pinForce_ = A0;
+    void forceSensorSetup();
+    void forceRead();
+    
     // water level
     
 
@@ -94,8 +98,8 @@ private:
     float waitTimerStart_{0};
     // ros parameters for easy tuning
     float pickupLen_{0.5};
-    float pickupTime_{1.0};
-    float dispenseLen_{0.5};
+    float pickupTime_{5.0};
+    float dispenseLen_{0.03};
     float dispenseTime_{1.0};
 
     // other //

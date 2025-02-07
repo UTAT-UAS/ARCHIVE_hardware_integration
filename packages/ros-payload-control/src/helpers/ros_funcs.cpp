@@ -17,26 +17,26 @@ void PayloadControl::PublishServoCommand()
     servoVelocityPub_.publish(&servoVelMsg_); 
 }
 
-void PayloadControl::PublishEncoderFb()
+void PayloadControl::PublishSensorsFb()
 {
     noInterrupts();
-    encoderRawFbMsg_.data = encoderRaw_;
     encoderLenFbMsg_.data = encoderLen_;
     interrupts();
 
-    encoderRawPub_.publish(&encoderRawFbMsg_);
+    forceMsg_.data = force_;
+
     encoderLenPub_.publish(&encoderLenFbMsg_);
+    forcePub_.publish(&forceMsg_);
 }
 
 void PayloadControl::PublishOperationState()
 {
-    // put op code into first index, state into second (int32multiarray)
-    stateMsg_.data_length = 2;
-    stateMsg_.data[0] = static_cast<int>(operation_);
-    stateMsg_.data[1] = static_cast<int>(state_);
-
+    // publish state and if the operation is done
+    stateMsg_.data = static_cast<int>(state_);
     operationDoneMsg_.data = operationDone_;
 
     stateMsgPub_.publish(&stateMsg_);
     operationDonePub_.publish(&operationDoneMsg_);
 }
+
+

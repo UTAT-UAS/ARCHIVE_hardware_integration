@@ -15,7 +15,5 @@ void PayloadControl::HandleEncoder()
     } else if (result == DIR_CCW) {
         encoderRaw_--;
     }
-    noInterrupts();
     encoderLen_ = conversion_ * encoderRaw_; // convert to length
-    interrupts();
 }
