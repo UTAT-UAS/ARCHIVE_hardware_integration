@@ -67,7 +67,7 @@ private:
     float servoOutput_{0};  // velocity
 
     // pi controller
-    float kp_{25};  
+    float kp_{50};  
     //float kd_{1};
     float ki_{2};
     float dt_{0.033};  // 30 Hz

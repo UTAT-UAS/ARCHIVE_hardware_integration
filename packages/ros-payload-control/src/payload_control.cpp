@@ -98,16 +98,20 @@ void PayloadControl::UpdatePayload()
             break;
 
         case OPCODE::PICKUP:
+
             operationDone_ = false;
             switch (state_)
             {
                 case State::IDLE:
+
                     contServoWrite(0);
                     ControlLoop(encoderLen_, 0);
                     SwitchState(State::UNSPOOL);    
                     waitTimerStart_ = millis();
                     break;
+
                 case State::UNSPOOL:
+
                     // if the encoder has reached the desired length with tolerances
                     // wait for hook dynamics
                     if (millis() - waitTimerStart_ <= 1000) {
@@ -119,15 +123,27 @@ void PayloadControl::UpdatePayload()
                         SwitchState(State::WAIT);
                     }
                     break;
+
                 case State::WAIT:
+
                     ControlLoop(pickupLen_, 0);
                     if (millis() - waitTimerStart_ >= pickupTime_ * 1000) {
                         SwitchState(State::RESPOOL);
                     }
                     break;
+
                 case State::RESPOOL:
-                    ControlLoop(0, 0);  // go back to 0 height
+
+                    if (encoderLen_ > 0.1) {
+                        ControlLoop(0.075, 0);  // go back to 0 height with encoder fb
+                    }
+                    else {
+                        contServoWrite(-1.5);  // slowly retract
+                    }
+
+                    // state transition condition
                     if (abs(-0.1 - encoderLen_) < 0.5 && force_ != 0) { // if force is detected, stop
+                        ControlLoop(0, 1);
                         operation_ = OPCODE::STOPPED;
                         operationDone_ = true;
                         encoderRaw_ = 0;
@@ -135,9 +151,10 @@ void PayloadControl::UpdatePayload()
                     break;
                 // another state for spooling up really slowly
             }
-
             break;
+
         case OPCODE::DISPENSE:
+
             operationDone_ = false;
             switch (state_)
             {
@@ -178,17 +195,28 @@ void PayloadControl::UpdatePayload()
                     break;
             }
             break;
+
         case OPCODE::RESET:
-            ControlLoop(0, 1);  // go back to 0 height
-            if (abs(encoderLen_) < 0.5 && force_ != 0) { // if force is detected, stop
+
+            if (encoderLen_ > 0.1) {
+                ControlLoop(0.075, 0);  // go back to 0 height with encoder fb
+            }
+            else {
+                contServoWrite(-1.5);  // slowly retract
+            }
+
+            // state transition condition
+            if (abs(-0.1 - encoderLen_) < 0.5 && force_ != 0) { // if force is detected, stop
+                ControlLoop(0, 1);
                 operation_ = OPCODE::STOPPED;
-                encoderRaw_ = 0;
                 operationDone_ = true;
+                encoderRaw_ = 0;
             }
             break;
 
         case OPCODE::MANUAL:
-            ControlLoop(manualServoSetpoint_, 1);
+
+            ControlLoop(manualServoSetpoint_, 0);
             break;
         
         default:
