@@ -8,11 +8,13 @@
 #include <std_msgs/Bool.h>
 #include <Rotary.h>
 #include <ServoTimer2.h>
+#include <Wire.h>
+#include <VL6180X.h>
 
 class PayloadControl
 {
 public:
-    PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 80, 105> &nh);
+    PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 80, 105> &nh);
     ~PayloadControl();
     void UpdatePayload();
 
@@ -21,18 +23,20 @@ private:
     void PublishServoCommand();
     void PublishOperationState();
     void PublishSensorsFb();
-    ros::NodeHandle_<ArduinoHardware, 5, 5, 80, 105> nh_;
-    ros::Publisher servoVelocityPub_;
+    ros::NodeHandle_<ArduinoHardware, 2, 5, 80, 105> nh_;
+    //ros::Publisher servoVelocityPub_;
     ros::Publisher encoderLenPub_;
     ros::Publisher stateMsgPub_;
     ros::Publisher operationDonePub_;
     ros::Publisher forcePub_;
+    ros::Publisher waterlevelPub_;
 
     std_msgs::Int32 stateMsg_;
     std_msgs::Bool operationDoneMsg_;
     std_msgs::Float32 servoVelMsg_;
     std_msgs::Float32 encoderLenFbMsg_;
     std_msgs::Float32 forceMsg_;
+    std_msgs::Float32 waterlevelMsg_;
 
     // sensors feedback //
     static void EncoderISR();
@@ -46,13 +50,17 @@ private:
     float conversion_ = 2 * PI * 0.02 * (1.0 / 20);
 
     // force sensor
-
-    float force_{0}; 
-    int pinForce_ = A0;
     void forceSensorSetup();
     void forceRead();
+    float force_{0}; 
+    int pinForce_ = A0;
     
     // water level
+
+    float waterlevel_{0};
+    VL6180X tof_sensor_;
+    void tofSensorSetup();
+    void tofRead();
     
 
     // servo control //

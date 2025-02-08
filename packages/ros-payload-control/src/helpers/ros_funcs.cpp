@@ -14,7 +14,7 @@ void PayloadControl::PublishServoCommand()
 {
     // ros
     servoVelMsg_.data = servoOutput_;
-    servoVelocityPub_.publish(&servoVelMsg_); 
+    //servoVelocityPub_.publish(&servoVelMsg_); 
 }
 
 void PayloadControl::PublishSensorsFb()
@@ -24,9 +24,11 @@ void PayloadControl::PublishSensorsFb()
     interrupts();
 
     forceMsg_.data = force_;
+    waterlevelMsg_.data = waterlevel_;
 
     encoderLenPub_.publish(&encoderLenFbMsg_);
     forcePub_.publish(&forceMsg_);
+    waterlevelPub_.publish(&waterlevelMsg_);    
 }
 
 void PayloadControl::PublishOperationState()

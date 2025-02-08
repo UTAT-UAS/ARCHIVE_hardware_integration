@@ -1,11 +1,12 @@
 #include "payload_control.hpp"
 
-PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 80, 105> &nh) 
- : nh_(nh), servoVelocityPub_("/pld/servo_sent", &servoVelMsg_), 
+PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 80, 105> &nh) 
+ : nh_(nh),
  encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_),
  stateMsgPub_("/pld/state_fb", &stateMsg_),
  operationDonePub_("/pld/op_done", &operationDoneMsg_),
- forcePub_("/pld/force", &forceMsg_)
+ forcePub_("/pld/force", &forceMsg_),
+ waterlevelPub_("/pld/water", &waterlevelMsg_)
 {
     // hardware setup
     nh_.getHardware()->setBaud(115200); 
@@ -24,11 +25,12 @@ PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 80, 105> 
     nh_.subscribe(stateSub_);
 
     // pubs
-    nh_.advertise(servoVelocityPub_);
+    //nh_.advertise(servoVelocityPub_);
     nh_.advertise(encoderLenPub_);
     nh_.advertise(stateMsgPub_);
     nh_.advertise(operationDonePub_);
     nh_.advertise(forcePub_);
+    nh_.advertise(waterlevelPub_);
 
     instance_ = this;
 
@@ -38,6 +40,7 @@ PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 5, 5, 80, 105> 
     attachInterrupt(digitalPinToInterrupt(pinB_), PayloadControl::EncoderISR, CHANGE);
     interrupts();
     forceSensorSetup();
+    tofSensorSetup();
 }
 
 PayloadControl::~PayloadControl()
@@ -78,6 +81,7 @@ void PayloadControl::ReadSensors()
     // read force sensor
     forceRead();
     // read tof sensor
+    tofRead();
 }
 
 void PayloadControl::SwitchState(State state)
