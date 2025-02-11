@@ -5,7 +5,7 @@ void PayloadControl::tofSensorSetup() {
     tof_sensor_.init();
     tof_sensor_.configureDefault();
     tof_sensor_.setTimeout(500);
-    tof_sensor_.writeReg16Bit(VL6180X::SYSRANGE__PART_TO_PART_RANGE_OFFSET, 0x32);
+    //tof_sensor_.writeReg16Bit(VL6180X::SYSRANGE__PART_TO_PART_RANGE_OFFSET, 0x32);
 
 }
 void PayloadControl::tofRead() {

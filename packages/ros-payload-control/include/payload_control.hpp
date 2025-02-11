@@ -11,10 +11,12 @@
 #include <Wire.h>
 #include <VL6180X.h>
 
+#define ROT2LIN 2 * PI * 0.02 * (1.0 / 20) // 2 * pi * r * gear ratio
+
 class PayloadControl
 {
 public:
-    PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 80, 105> &nh);
+    PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 75, 95> &nh);
     ~PayloadControl();
     void UpdatePayload();
 
@@ -23,7 +25,7 @@ private:
     void PublishServoCommand();
     void PublishOperationState();
     void PublishSensorsFb();
-    ros::NodeHandle_<ArduinoHardware, 2, 5, 80, 105> nh_;
+    ros::NodeHandle_<ArduinoHardware, 2, 5, 75, 95> nh_;
     //ros::Publisher servoVelocityPub_;
     ros::Publisher encoderLenPub_;
     ros::Publisher stateMsgPub_;
@@ -47,13 +49,15 @@ private:
     Rotary encoder_ = Rotary(pinA_, pinB_);
     float encoderRaw_{0}; // read from encoders
     float encoderLen_{0};
-    float conversion_ = 2 * PI * 0.02 * (1.0 / 20);
+    float lastEncoderLen_{0};
+    unsigned long lastEncoderChangeTime_{0};
 
     // force sensor
     void forceSensorSetup();
     void forceRead();
     float force_{0}; 
-    int pinForce_ = A0;
+    float rawForce_{0};
+    float alpha_{0.1};  // smoothing factor
     
     // water level
 
@@ -105,7 +109,7 @@ private:
     bool operationDone_{false};
     float waitTimerStart_{0};
     // ros parameters for easy tuning
-    float pickupLen_{0.5};
+    float pickupLen_{0.4};
     float pickupTime_{5.0};
     float dispenseLen_{0.03};
     float dispenseTime_{1.0};

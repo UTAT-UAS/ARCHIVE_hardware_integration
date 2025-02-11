@@ -20,8 +20,10 @@ void setup() {
   Wire.begin();
   tof_sensor.init();
   tof_sensor.configureDefault();
-  tof_sensor.setTimeout(500);
-  tof_sensor.writeReg16Bit(VL6180X::SYSRANGE__PART_TO_PART_RANGE_OFFSET, 0x32);
+  //tof_sensor.setTimeout(500);
+  //tof_sensor.writeReg16Bit(VL6180X::SYSRANGE__MAX_CONVERGENCE_TIME, 30);
+  //tof_sensor.writeReg16Bit(VL6180X::SYSRANGE__PART_TO_PART_RANGE_OFFSET, 0x32);
+  //tof_sensor.writeReg16Bit(VL6180X::SYSRANGE__CROSSTALK_COMPENSATION_RATE, 0xC26);
 }
 
 void loop() {

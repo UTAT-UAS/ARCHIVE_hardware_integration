@@ -1,6 +1,6 @@
 #include "payload_control.hpp"
 
-PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 80, 105> &nh) 
+PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 75, 95> &nh) 
  : nh_(nh),
  encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_),
  stateMsgPub_("/pld/state_fb", &stateMsg_),
@@ -16,7 +16,7 @@ PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 80, 105> 
     contServoAttach();
     contServoWrite(0.0);
     hookServo_.attach(hookServoPin_);
-    hookServo_.write(1000);
+    hookServo_.write(2000);
 
     // subs
     ros::Subscriber<std_msgs::Float32>setpointSub_("/pld/manual_command", PayloadControl::SetpointCb);
@@ -139,19 +139,19 @@ void PayloadControl::UpdatePayload()
                 case State::RESPOOL:
 
                     if (encoderLen_ > 0.1) {
-                        ControlLoop(0.075, 0);  // go back to 0 height with encoder fb
+                        ControlLoop(0.05, 0);  // go back to 0 height with encoder fb
                     }
                     else {
-                        contServoWrite(-1.5);  // slowly retract
-                    }
-
-                    // state transition condition
-                    if (abs(-0.1 - encoderLen_) < 0.5 && force_ != 0) { // if force is detected, stop
-                        ControlLoop(0, 1);
-                        operation_ = OPCODE::STOPPED;
-                        operationDone_ = true;
-                        encoderRaw_ = 0;
-                    }
+                        noInterrupts();
+                        contServoWrite(-3);  // slowly retract
+                        if (force_ >= 10 || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
+                            ControlLoop(0, 1);
+                            operation_ = OPCODE::STOPPED;
+                            operationDone_ = true;
+                            encoderRaw_ = 0;
+                        }
+                        interrupts();
+                    } 
                     break;
                 // another state for spooling up really slowly
             }
@@ -201,21 +201,18 @@ void PayloadControl::UpdatePayload()
             break;
 
         case OPCODE::RESET:
-
-            if (encoderLen_ > 0.1) {
-                ControlLoop(0.075, 0);  // go back to 0 height with encoder fb
-            }
-            else {
-                contServoWrite(-1.5);  // slowly retract
-            }
+            state_ = State::RESPOOL;
+            contServoWrite(-3);  // slowly retract
 
             // state transition condition
-            if (abs(-0.1 - encoderLen_) < 0.5 && force_ != 0) { // if force is detected, stop
+            noInterrupts();
+            if (force_ >= 10 ) { // if force is detected, stop
                 ControlLoop(0, 1);
                 operation_ = OPCODE::STOPPED;
                 operationDone_ = true;
                 encoderRaw_ = 0;
             }
+            interrupts();
             break;
 
         case OPCODE::MANUAL:
