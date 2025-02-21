@@ -143,7 +143,7 @@ void PayloadControl::UpdatePayload()
                     }
                     else {
                         noInterrupts();
-                        contServoWrite(-3);  // slowly retract
+                        contServoWrite(-1.5);  // slowly retract
                         if (force_ >= 10 || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
                             ControlLoop(0, 1);
                             operation_ = OPCODE::STOPPED;
@@ -186,16 +186,22 @@ void PayloadControl::UpdatePayload()
                     ControlLoop(dispenseLen_, 1);
                     // logic here to check water levels
                     // if (current water amount - last water amount > 600) {
-                    // SwitchState(State::RESPOOL);
+                    if (millis() - waitTimerStart_ >= 3 * 1000) {
+                        SwitchState(State::RESPOOL);
+                        contServoWrite(-1.5);  // slowly retract
+                    }
                     break;
                 case State::RESPOOL:
                     // slowly retract and wait for force sensor
-                    contServoWrite(-1);
-                    if (force_ != 0) {
+                    noInterrupts();
+                    contServoWrite(-1.5);  // slowly retract
+                    if (force_ >= 50) { // if force is detected, stop
+                        ControlLoop(0, 1);
                         operation_ = OPCODE::STOPPED;
                         operationDone_ = true;
                         encoderRaw_ = 0;
                     }
+                    interrupts();
                     break;
             }
             break;

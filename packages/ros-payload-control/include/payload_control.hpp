@@ -109,7 +109,7 @@ private:
     bool operationDone_{false};
     float waitTimerStart_{0};
     // ros parameters for easy tuning
-    float pickupLen_{0.4};
+    float pickupLen_{0.8};
     float pickupTime_{5.0};
     float dispenseLen_{0.03};
     float dispenseTime_{1.0};

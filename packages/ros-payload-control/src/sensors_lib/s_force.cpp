@@ -7,6 +7,6 @@ void PayloadControl::forceSensorSetup() {
 
 void PayloadControl::forceRead() {
   // put your main code here, to run repeatedly:
-  rawForce_ = analogRead(A0) * (294.3 / 1023.);
+  rawForce_ = 294.3 - analogRead(A0) * (294.3 / 1023.);
   force_ = alpha_ * rawForce_ + (1 - alpha_) * force_;
 }
