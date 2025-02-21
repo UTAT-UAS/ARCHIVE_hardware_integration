@@ -16,7 +16,7 @@
 class PayloadControl
 {
 public:
-    PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 75, 95> &nh);
+    PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 70, 90> &nh);
     ~PayloadControl();
     void UpdatePayload();
 
@@ -25,7 +25,7 @@ private:
     void PublishServoCommand();
     void PublishOperationState();
     void PublishSensorsFb();
-    ros::NodeHandle_<ArduinoHardware, 2, 5, 75, 95> nh_;
+    ros::NodeHandle_<ArduinoHardware, 2, 5, 70, 90> nh_;
     //ros::Publisher servoVelocityPub_;
     ros::Publisher encoderLenPub_;
     ros::Publisher stateMsgPub_;

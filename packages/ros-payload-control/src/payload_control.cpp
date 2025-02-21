@@ -1,6 +1,6 @@
 #include "payload_control.hpp"
 
-PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 75, 95> &nh) 
+PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 70, 90> &nh) 
  : nh_(nh),
  encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_),
  stateMsgPub_("/pld/state_fb", &stateMsg_),
@@ -73,7 +73,7 @@ void PayloadControl::ControlLoop(float lenSetpoint, float hookSetpoint)
 
     // write to servos
     hookServo_.write(map(hookSetpoint, 0, 1, 1000, 2000));
-    contServoWrite(servoOutput_);
+    contServoWrite(-servoOutput_);
 }
 
 void PayloadControl::ReadSensors()
@@ -81,7 +81,7 @@ void PayloadControl::ReadSensors()
     // read force sensor
     forceRead();
     // read tof sensor
-    tofRead();
+    // tofRead();
 }
 
 void PayloadControl::SwitchState(State state)
@@ -142,15 +142,13 @@ void PayloadControl::UpdatePayload()
                         ControlLoop(0.05, 0);  // go back to 0 height with encoder fb
                     }
                     else {
-                        noInterrupts();
-                        contServoWrite(-1.5);  // slowly retract
+                        contServoWrite(1.5);  // slowly retract
                         if (force_ >= 10 || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
                             ControlLoop(0, 1);
                             operation_ = OPCODE::STOPPED;
                             operationDone_ = true;
                             encoderRaw_ = 0;
                         }
-                        interrupts();
                     } 
                     break;
                 // another state for spooling up really slowly
@@ -194,7 +192,7 @@ void PayloadControl::UpdatePayload()
                 case State::RESPOOL:
                     // slowly retract and wait for force sensor
                     noInterrupts();
-                    contServoWrite(-1.5);  // slowly retract
+                    contServoWrite(1.5);  // slowly retract
                     if (force_ >= 50) { // if force is detected, stop
                         ControlLoop(0, 1);
                         operation_ = OPCODE::STOPPED;
@@ -208,8 +206,8 @@ void PayloadControl::UpdatePayload()
 
         case OPCODE::RESET:
             state_ = State::RESPOOL;
-            contServoWrite(-3);  // slowly retract
-
+            contServoWrite(3);  // slowly retract
+            ControlLoop(0,0);
             // state transition condition
             noInterrupts();
             if (force_ >= 10 ) { // if force is detected, stop
