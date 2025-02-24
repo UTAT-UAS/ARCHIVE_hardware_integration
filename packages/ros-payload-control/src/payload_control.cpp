@@ -1,6 +1,6 @@
 #include "payload_control.hpp"
 
-PayloadControl::PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 70, 90> &nh) 
+PayloadControl::PayloadControl(ros::NodeHandle &nh) 
  : nh_(nh),
  encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_),
  stateMsgPub_("/pld/state_fb", &stateMsg_),

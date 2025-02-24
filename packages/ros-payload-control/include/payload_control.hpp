@@ -2,12 +2,14 @@
 #define PAYLOAD_CONTROL_HPP
 
 #include <Arduino.h>
+#include <ESP32Servo.h>
+#undef ESP32
 #include <ros.h>
+#define ESP32
 #include <std_msgs/Float32.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/Bool.h>
 #include <Rotary.h>
-#include <ServoTimer2.h>
 #include <Wire.h>
 #include <VL6180X.h>
 
@@ -16,7 +18,7 @@
 class PayloadControl
 {
 public:
-    PayloadControl(ros::NodeHandle_<ArduinoHardware, 2, 5, 70, 90> &nh);
+    PayloadControl(ros::NodeHandle &nh);
     ~PayloadControl();
     void UpdatePayload();
 
@@ -25,7 +27,7 @@ private:
     void PublishServoCommand();
     void PublishOperationState();
     void PublishSensorsFb();
-    ros::NodeHandle_<ArduinoHardware, 2, 5, 70, 90> nh_;
+    ros::NodeHandle nh_;
     //ros::Publisher servoVelocityPub_;
     ros::Publisher encoderLenPub_;
     ros::Publisher stateMsgPub_;
@@ -72,7 +74,7 @@ private:
     void ControlLoop(float lenSetpoint, float hookSetpoint);
     void contServoAttach();
     void contServoWrite(float rps);
-    ServoTimer2 hookServo_;
+    Servo hookServo_;
     int contServoPin_ = 9;
     int hookServoPin_ = 11;
     float manualServoSetpoint_{0}; // position
