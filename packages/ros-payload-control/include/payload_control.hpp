@@ -46,8 +46,8 @@ private:
     static void EncoderISR();
     void HandleEncoder();
     void ReadSensors();
-    int pinA_ = 2;
-    int pinB_ = 3;
+    int pinA_ = 26;
+    int pinB_ = 25;
     Rotary encoder_ = Rotary(pinA_, pinB_);
     float encoderRaw_{0}; // read from encoders
     float encoderLen_{0};
@@ -57,6 +57,7 @@ private:
     // force sensor
     void forceSensorSetup();
     void forceRead();
+    int forceAnalogPin_ = 12;
     float force_{0}; 
     float rawForce_{0};
     float alpha_{0.1};  // smoothing factor
@@ -75,8 +76,9 @@ private:
     void contServoAttach();
     void contServoWrite(float rps);
     Servo hookServo_;
-    int contServoPin_ = 9;
-    int hookServoPin_ = 11;
+    Servo contServo_; // continous servo added
+    int contServoPin_ = 14;
+    int hookServoPin_ = 27;
     float manualServoSetpoint_{0}; // position
     float servoOutput_{0};  // velocity
 
