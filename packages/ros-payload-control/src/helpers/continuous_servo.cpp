@@ -7,7 +7,7 @@ void PayloadControl::contServoAttach()
 
 void PayloadControl::contServoWrite(float rps)
 {
-    int us = 1500 + (rps * (500.0 / maxSpd_));  
+    int us = 1000 + ((rps - (-maxSpd_)) * (2000 - 1000)) / (maxSpd_*2); 
     us = constrain(us, 1000, 2000);
     contServo_.writeMicroseconds(us);
 }

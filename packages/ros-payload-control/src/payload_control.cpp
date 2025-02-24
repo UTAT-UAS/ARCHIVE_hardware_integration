@@ -1,46 +1,27 @@
 #include "payload_control.hpp"
 
-PayloadControl::PayloadControl(ros::NodeHandle &nh) 
- : nh_(nh),
+PayloadControl::PayloadControl() 
+ :
  encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_),
  stateMsgPub_("/pld/state_fb", &stateMsg_),
  operationDonePub_("/pld/op_done", &operationDoneMsg_),
  forcePub_("/pld/force", &forceMsg_),
  waterlevelPub_("/pld/water", &waterlevelMsg_)
 {
-    // hardware setup
-    nh_.getHardware()->setBaud(115200); 
-    nh_.initNode();
-
     // servo setup
     contServoAttach();
     contServoWrite(0.0);
     hookServo_.attach(hookServoPin_);
     hookServo_.write(2000);
 
-    // subs
-    ros::Subscriber<std_msgs::Float32>setpointSub_("/pld/manual_command", PayloadControl::SetpointCb);
-    ros::Subscriber<std_msgs::Int32>stateSub_("/pld/state_command", PayloadControl::RecieveStateCb);
-    nh_.subscribe(setpointSub_);
-    nh_.subscribe(stateSub_);
-
-    // pubs
-    //nh_.advertise(servoVelocityPub_);
-    nh_.advertise(encoderLenPub_);
-    nh_.advertise(stateMsgPub_);
-    nh_.advertise(operationDonePub_);
-    nh_.advertise(forcePub_);
-    nh_.advertise(waterlevelPub_);
-
     instance_ = this;
 
     // setup sensors
-    noInterrupts();
-    attachInterrupt(digitalPinToInterrupt(pinA_), PayloadControl::EncoderISR, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(pinB_), PayloadControl::EncoderISR, CHANGE);
-    interrupts();
-    forceSensorSetup();
-    tofSensorSetup();
+    EncoderSetup();
+    ForceSensorSetup();
+    //TofSensorSetup();
+
+
 }
 
 PayloadControl::~PayloadControl()
@@ -52,9 +33,7 @@ void PayloadControl::ControlLoop(float lenSetpoint, float hookSetpoint)
 {
     // pi controller
 
-    noInterrupts();
     curError_ = lenSetpoint - encoderLen_;  // length error
-    interrupts();
     //float derivative = (curError_ - lastError_) / dt_;
     servoOutput_ = kp_ * curError_ + ki_ * integral_;
 
@@ -78,10 +57,13 @@ void PayloadControl::ControlLoop(float lenSetpoint, float hookSetpoint)
 
 void PayloadControl::ReadSensors()
 {
+    // read encoder
+    ReadEncoder();
     // read force sensor
-    forceRead();
+    ForceRead();
     // read tof sensor
-    // tofRead();
+    //TofRead();
+    
 }
 
 void PayloadControl::SwitchState(State state)
@@ -102,7 +84,7 @@ void PayloadControl::UpdatePayload()
             break;
 
         case OPCODE::PICKUP:
-
+            noInterrupts();
             operationDone_ = false;
             switch (state_)
             {
@@ -147,16 +129,18 @@ void PayloadControl::UpdatePayload()
                             ControlLoop(0, 1);
                             operation_ = OPCODE::STOPPED;
                             operationDone_ = true;
+                            noInterrupts();
                             encoderRaw_ = 0;
+                            interrupts();
                         }
                     } 
                     break;
-                // another state for spooling up really slowly
+                interrupts();
             }
             break;
 
         case OPCODE::DISPENSE:
-
+            noInterrupts();
             operationDone_ = false;
             switch (state_)
             {
@@ -191,7 +175,6 @@ void PayloadControl::UpdatePayload()
                     break;
                 case State::RESPOOL:
                     // slowly retract and wait for force sensor
-                    noInterrupts();
                     contServoWrite(1.5);  // slowly retract
                     if (force_ >= 50) { // if force is detected, stop
                         ControlLoop(0, 1);
@@ -199,8 +182,8 @@ void PayloadControl::UpdatePayload()
                         operationDone_ = true;
                         encoderRaw_ = 0;
                     }
-                    interrupts();
                     break;
+            interrupts();
             }
             break;
 
@@ -231,5 +214,4 @@ void PayloadControl::UpdatePayload()
     PublishServoCommand();
     PublishSensorsFb();
     PublishOperationState();
-    nh_.spinOnce();
 }

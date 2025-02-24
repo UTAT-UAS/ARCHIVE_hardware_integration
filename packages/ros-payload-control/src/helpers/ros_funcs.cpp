@@ -4,7 +4,7 @@ void PayloadControl::SetpointCb(const std_msgs::Float32 &msg)
 {
     instance_->manualServoSetpoint_ = msg.data;
 }
-
+    
 void PayloadControl::RecieveStateCb(const std_msgs::Int32 &msg)
 {
     instance_->operation_ = static_cast<OPCODE>(msg.data);

@@ -5,7 +5,7 @@
 //     tof_sensor_.setTimeout(500);
 
 // }
-// void PayloadControl::tofRead() {
+// void PayloadControl::TofRead() {
 //   waterlevel_ = (float)tof_sensor_.readRangeSingleMillimeters();
 // } implement the above but not ros and serial output
 

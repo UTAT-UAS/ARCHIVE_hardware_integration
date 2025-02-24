@@ -1,15 +1,32 @@
 #include "payload_control.hpp"
 
 ros::NodeHandle nh;
-PayloadControl *pld = nullptr;
+PayloadControl pld;
+PayloadControl* PayloadControl::instance_ = nullptr;
+
+ros::Subscriber<std_msgs::Float32>setpointSub_("/pld/manual_command", PayloadControl::SetpointCb);
+ros::Subscriber<std_msgs::Int32>stateSub_("/pld/state_command", PayloadControl::RecieveStateCb);
 
 // Define static instance pointer
-PayloadControl* PayloadControl::instance_ = nullptr;
 
 const unsigned int rate = 30;  // Update rate in Hz
 
 void setup() {
-    pld = new PayloadControl(nh);
+    // hardware setup
+    nh.getHardware()->setBaud(115200); 
+    nh.initNode();
+
+    // subs
+    nh.subscribe(setpointSub_);
+    nh.subscribe(stateSub_);
+
+    // pubs
+    //nh_.advertise(servoVelocityPub_);
+    nh.advertise(pld.encoderLenPub_);
+    nh.advertise(pld.stateMsgPub_);
+    nh.advertise(pld.operationDonePub_);
+    nh.advertise(pld.forcePub_);
+    nh.advertise(pld.waterlevelPub_);
 }
 
 
@@ -19,7 +36,7 @@ void loop() {
 
     if (current_time - last_time >= (1000 / rate)) {
         last_time = current_time;
-        pld->UpdatePayload();  
+        pld.UpdatePayload();  
         nh.spinOnce(); 
     }
 }

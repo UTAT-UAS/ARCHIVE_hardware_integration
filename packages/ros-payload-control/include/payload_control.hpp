@@ -18,9 +18,18 @@
 class PayloadControl
 {
 public:
-    PayloadControl(ros::NodeHandle &nh);
+    PayloadControl();
     ~PayloadControl();
     void UpdatePayload();
+
+    static void SetpointCb(const std_msgs::Float32 &msg);
+    static void RecieveStateCb(const std_msgs::Int32 &msg);
+
+    ros::Publisher encoderLenPub_;
+    ros::Publisher stateMsgPub_;
+    ros::Publisher operationDonePub_;
+    ros::Publisher forcePub_;
+    ros::Publisher waterlevelPub_;
 
 private:
     // ros //
@@ -29,11 +38,7 @@ private:
     void PublishSensorsFb();
     ros::NodeHandle nh_;
     //ros::Publisher servoVelocityPub_;
-    ros::Publisher encoderLenPub_;
-    ros::Publisher stateMsgPub_;
-    ros::Publisher operationDonePub_;
-    ros::Publisher forcePub_;
-    ros::Publisher waterlevelPub_;
+
 
     std_msgs::Int32 stateMsg_;
     std_msgs::Bool operationDoneMsg_;
@@ -43,8 +48,9 @@ private:
     std_msgs::Float32 waterlevelMsg_;
 
     // sensors feedback //
-    static void EncoderISR();
-    void HandleEncoder();
+    void EncoderSetup();
+    static void IRAM_ATTR EncoderISR();
+    void ReadEncoder();
     void ReadSensors();
     int pinA_ = 26;
     int pinB_ = 25;
@@ -55,8 +61,8 @@ private:
     unsigned long lastEncoderChangeTime_{0};
 
     // force sensor
-    void forceSensorSetup();
-    void forceRead();
+    void ForceSensorSetup();
+    void ForceRead();
     int forceAnalogPin_ = 12;
     float force_{0}; 
     float rawForce_{0};
@@ -66,12 +72,11 @@ private:
 
     float waterlevel_{0};
     VL6180X tof_sensor_;
-    void tofSensorSetup();
-    void tofRead();
+    void TofSensorSetup();
+    void TofRead();
     
 
     // servo control //
-    static void SetpointCb(const std_msgs::Float32 &msg);
     void ControlLoop(float lenSetpoint, float hookSetpoint);
     void contServoAttach();
     void contServoWrite(float rps);
@@ -106,7 +111,6 @@ private:
         WAIT,
         RESPOOL
     };
-    static void RecieveStateCb(const std_msgs::Int32 &msg);
     void SwitchState(State state);
     OPCODE operation_{OPCODE::STOPPED};
     State state_{State::IDLE};
@@ -123,4 +127,4 @@ private:
 
 };
 
-#endif
+#endif // PAYLOAD_CONTROL_HPP

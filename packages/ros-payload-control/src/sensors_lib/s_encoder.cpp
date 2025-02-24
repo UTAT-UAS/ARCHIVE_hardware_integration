@@ -1,13 +1,19 @@
 #include "payload_control.hpp"
 
-void PayloadControl::EncoderISR()
+void IRAM_ATTR PayloadControl::EncoderISR()
 {
-    if (instance_) {
-        instance_->HandleEncoder();
-    }
+    // if (instance_) {
+    //     instance_->ReadEncoder();
+    // }
 }
 
-void PayloadControl::HandleEncoder()
+void PayloadControl::EncoderSetup()
+{
+    pinMode(pinA_, INPUT);
+    pinMode(pinB_, INPUT);
+}
+
+void PayloadControl::ReadEncoder()
 {
     lastEncoderLen_ = encoderLen_;
     unsigned char result = encoder_.process();
