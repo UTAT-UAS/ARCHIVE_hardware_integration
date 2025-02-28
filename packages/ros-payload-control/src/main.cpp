@@ -1,8 +1,8 @@
 #include "payload_control.hpp"
 
+PayloadControl* PayloadControl::instance_ = nullptr;
 ros::NodeHandle nh;
 PayloadControl pld;
-PayloadControl* PayloadControl::instance_ = nullptr;
 
 ros::Subscriber<std_msgs::Float32>setpointSub_("/pld/manual_command", PayloadControl::SetpointCb);
 ros::Subscriber<std_msgs::Int32>stateSub_("/pld/state_command", PayloadControl::RecieveStateCb);
@@ -27,6 +27,8 @@ void setup() {
     nh.advertise(pld.operationDonePub_);
     nh.advertise(pld.forcePub_);
     nh.advertise(pld.waterlevelPub_);
+
+    pld.SensorsSetup();
 }
 
 

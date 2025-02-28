@@ -9,7 +9,6 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/Bool.h>
-#include <Rotary.h>
 #include <Wire.h>
 #include <VL6180X.h>
 
@@ -19,8 +18,11 @@ class PayloadControl
 {
 public:
     PayloadControl();
-    ~PayloadControl();
+    ~PayloadControl() = default;
+    void SensorsSetup();
     void UpdatePayload();
+    int getPinA() {return pinA_;}
+    int getPinB() {return pinB_;}
 
     static void SetpointCb(const std_msgs::Float32 &msg);
     static void RecieveStateCb(const std_msgs::Int32 &msg);
@@ -38,8 +40,6 @@ private:
     void PublishSensorsFb();
     ros::NodeHandle nh_;
     //ros::Publisher servoVelocityPub_;
-
-
     std_msgs::Int32 stateMsg_;
     std_msgs::Bool operationDoneMsg_;
     std_msgs::Float32 servoVelMsg_;
@@ -50,20 +50,24 @@ private:
     // sensors feedback //
     void EncoderSetup();
     static void IRAM_ATTR EncoderISR();
-    void ReadEncoder();
+    void IRAM_ATTR ReadEncoder();
+
+    //void ProcessEncoder();
     void ReadSensors();
-    int pinA_ = 26;
-    int pinB_ = 25;
-    Rotary encoder_ = Rotary(pinA_, pinB_);
-    float encoderRaw_{0}; // read from encoders
-    float encoderLen_{0};
-    float lastEncoderLen_{0};
-    unsigned long lastEncoderChangeTime_{0};
+    unsigned char encState_{0};
+    int pinA_ = 2;
+    int pinB_ = 4;
+       
+
+    volatile int encoderRaw_{0}; // read from encoders
+    volatile float encoderLen_{0};
+    volatile float lastEncoderLen_{0};
+    volatile unsigned long lastEncoderChangeTime_{0};
 
     // force sensor
     void ForceSensorSetup();
     void ForceRead();
-    int forceAnalogPin_ = 12;
+    int forceAnalogPin_ = 13;
     float force_{0}; 
     float rawForce_{0};
     float alpha_{0.1};  // smoothing factor

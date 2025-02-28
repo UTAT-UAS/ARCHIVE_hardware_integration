@@ -1,5 +1,5 @@
-#include "payload_control.hpp"
-
+// test esp32 rotary encoder library
+#include <Arduino.h>
 #define DIR_NONE 0x00           // No complete step yet.
 #define DIR_CW   0x10           // Clockwise step.
 #define DIR_CCW  0x20           // Anti-clockwise step.
@@ -22,20 +22,59 @@ const unsigned char ttable[8][4] = {
     {R_START,    R_START,     R_START,     R_START}                 // ILLEGAL
 };
 
-void PayloadControl::EncoderSetup()
+class Test 
+{
+public:
+    Test();
+    ~Test() = default;
+    int GetEncoderLen();
+    void EncoderSetup();
+
+    static void IRAM_ATTR EncoderISR();
+
+private:
+    void IRAM_ATTR ReadEncoder();
+    int pinA_ = 2;
+    int pinB_ = 4;
+    volatile int encoderRaw_{0}; // read from encoders
+    float encoderLen_{0};
+    float lastEncoderLen_{0};
+    unsigned long lastEncoderChangeTime_{0};
+    static Test *instance_;
+
+    // encoder state
+    unsigned char encState_{0};
+
+};
+
+Test::Test()
+{
+    instance_ = this;
+}
+ 
+
+int Test::GetEncoderLen()
+{
+    noInterrupts();
+    int temp = encoderRaw_;
+    interrupts();
+    return temp;
+}
+
+void Test::EncoderSetup()
 {
     pinMode(pinA_, INPUT_PULLUP);
     pinMode(pinB_, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(pinA_), instance_->EncoderISR, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(pinB_), instance_->EncoderISR, CHANGE);
-}   
-
-void IRAM_ATTR PayloadControl::EncoderISR()
+    attachInterrupt(digitalPinToInterrupt(2), EncoderISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(4), EncoderISR, CHANGE);
+}
+void IRAM_ATTR Test::EncoderISR()
 {
     instance_->ReadEncoder();
+    //Serial.println("ISR triggered");
 }
 
-void IRAM_ATTR PayloadControl::ReadEncoder()
+void IRAM_ATTR Test::ReadEncoder()
 {
     const unsigned char state = (digitalRead(pinA_) << 1) | digitalRead(pinB_);
     encState_ = ttable[encState_ & 0x07][state];
@@ -45,6 +84,22 @@ void IRAM_ATTR PayloadControl::ReadEncoder()
     } else if (encState_ & DIR_CCW) {
         encoderRaw_--;
     }
-    encoderLen_ = ROT2LIN * encoderRaw_; // convert to meters
-
 }
+
+Test *Test::instance_ = nullptr;
+Test test;
+
+void setup() {
+    // put your setup code here, to run once:
+    Serial.begin(115200);
+    test.EncoderSetup();
+    Serial.println("Encoder setup");
+}
+
+void loop() {
+    // put your main code here, to run repeatedly:
+    //Serial.print("Encoder Len: ");
+    Serial.println(test.GetEncoderLen());
+    delay(100);
+}
+

@@ -8,25 +8,20 @@ PayloadControl::PayloadControl()
  forcePub_("/pld/force", &forceMsg_),
  waterlevelPub_("/pld/water", &waterlevelMsg_)
 {
+    instance_ = this;
+}
+
+void PayloadControl::SensorsSetup()
+{
     // servo setup
     contServoAttach();
     contServoWrite(0.0);
     hookServo_.attach(hookServoPin_);
     hookServo_.write(2000);
 
-    instance_ = this;
-
-    // setup sensors
     EncoderSetup();
     ForceSensorSetup();
     //TofSensorSetup();
-
-
-}
-
-PayloadControl::~PayloadControl()
-{
-    
 }
 
 void PayloadControl::ControlLoop(float lenSetpoint, float hookSetpoint)
@@ -57,13 +52,10 @@ void PayloadControl::ControlLoop(float lenSetpoint, float hookSetpoint)
 
 void PayloadControl::ReadSensors()
 {
-    // read encoder
-    ReadEncoder();
     // read force sensor
     ForceRead();
     // read tof sensor
     //TofRead();
-    
 }
 
 void PayloadControl::SwitchState(State state)
@@ -84,7 +76,6 @@ void PayloadControl::UpdatePayload()
             break;
 
         case OPCODE::PICKUP:
-            noInterrupts();
             operationDone_ = false;
             switch (state_)
             {
@@ -124,23 +115,19 @@ void PayloadControl::UpdatePayload()
                         ControlLoop(0.05, 0);  // go back to 0 height with encoder fb
                     }
                     else {
-                        contServoWrite(1.5);  // slowly retract
-                        if (force_ >= 10 || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
+                        contServoWrite(1.3);  // slowly retract
+                        if (force_ >= 10) { // if force is detected, stop
                             ControlLoop(0, 1);
                             operation_ = OPCODE::STOPPED;
                             operationDone_ = true;
-                            noInterrupts();
                             encoderRaw_ = 0;
-                            interrupts();
                         }
                     } 
                     break;
-                interrupts();
             }
             break;
 
         case OPCODE::DISPENSE:
-            noInterrupts();
             operationDone_ = false;
             switch (state_)
             {
@@ -168,7 +155,7 @@ void PayloadControl::UpdatePayload()
                     ControlLoop(dispenseLen_, 1);
                     // logic here to check water levels
                     // if (current water amount - last water amount > 600) {
-                    if (millis() - waitTimerStart_ >= 3 * 1000) {
+                    if (millis() - waitTimerStart_ >= 5 * 1000) {
                         SwitchState(State::RESPOOL);
                         contServoWrite(-1.5);  // slowly retract
                     }
@@ -176,30 +163,27 @@ void PayloadControl::UpdatePayload()
                 case State::RESPOOL:
                     // slowly retract and wait for force sensor
                     contServoWrite(1.5);  // slowly retract
-                    if (force_ >= 50) { // if force is detected, stop
+                    if (force_ >= 10) { // if force is detected, stop
                         ControlLoop(0, 1);
                         operation_ = OPCODE::STOPPED;
                         operationDone_ = true;
                         encoderRaw_ = 0;
                     }
                     break;
-            interrupts();
             }
             break;
 
         case OPCODE::RESET:
             state_ = State::RESPOOL;
-            contServoWrite(3);  // slowly retract
-            ControlLoop(0,0);
+            contServoWrite(2);  // slowly retract
+            hookServo_.write(1000);
             // state transition condition
-            noInterrupts();
-            if (force_ >= 10 ) { // if force is detected, stop
+            if (force_ >= 10) { // if force is detected, stop
+                encoderRaw_ = 0;
                 ControlLoop(0, 1);
                 operation_ = OPCODE::STOPPED;
                 operationDone_ = true;
-                encoderRaw_ = 0;
             }
-            interrupts();
             break;
 
         case OPCODE::MANUAL:
