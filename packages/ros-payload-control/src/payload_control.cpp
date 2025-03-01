@@ -3,6 +3,7 @@
 PayloadControl::PayloadControl() 
  :
  encoderLenPub_("/pld/encoder_len", &encoderLenFbMsg_),
+ encoderVelPub_("/pld/encoder_vel", &encoderVelMsg_),
  stateMsgPub_("/pld/state_fb", &stateMsg_),
  operationDonePub_("/pld/op_done", &operationDoneMsg_),
  forcePub_("/pld/force", &forceMsg_),
@@ -24,19 +25,12 @@ void PayloadControl::SensorsSetup()
     //TofSensorSetup();
 }
 
-void PayloadControl::ControlLoop(float lenSetpoint, float hookSetpoint)
+void PayloadControl::PositionControlLoop(float lenSetpoint, float hookSetpoint)
 {
     // pi controller
-
     curError_ = lenSetpoint - encoderLen_;  // length error
     //float derivative = (curError_ - lastError_) / dt_;
-    servoOutput_ = kp_ * curError_ + ki_ * integral_;
-
-    // reset int and output if error is small
-    if (abs(curError_) < 0.01) {
-        servoOutput_ = 0;
-        integral_ = 0;
-    }    
+    servoOutput_ = kp_ * curError_ + ki_ * integral_; 
 
     // clamping
     if (servoOutput_ >= maxSpd_) {servoOutput_ = maxSpd_;}
@@ -45,17 +39,31 @@ void PayloadControl::ControlLoop(float lenSetpoint, float hookSetpoint)
     lastError_ = curError_;
     hookSetpoint = constrain(hookSetpoint, 0, 1);
 
+    // if error small reset
+    if (abs(curError_) < 0.005) {
+        servoOutput_ = 0;
+        integral_ = 0;
+    }
+
     // write to servos
-    hookServo_.write(map(hookSetpoint, 0, 1, 1000, 2000));
+    hookServo_.writeMicroseconds(map(hookSetpoint, 0, 1, 1025, 1875));
     contServoWrite(-servoOutput_);
+}
+
+void PayloadControl::VelocityControlLoop(float rps)
+{
+    // i controller
+    curVelError_ = rps - (filteredVel_ / R);  // velocity error
+    velIntegral_ += curVelError_ * dt_;
+    contServoWrite(-(rps + kiVel_ * velIntegral_));
 }
 
 void PayloadControl::ReadSensors()
 {
+    // process encoder
+    ProcessEncoder();
     // read force sensor
     ForceRead();
-    // read tof sensor
-    //TofRead();
 }
 
 void PayloadControl::SwitchState(State state)
@@ -65,12 +73,15 @@ void PayloadControl::SwitchState(State state)
 
 void PayloadControl::UpdatePayload()
 {
+    // update the hold position for continuous servo
+    if (operation_ != OPCODE::STOPPED) {
+        stoppedEncoderLen_ = encoderLen_;
+    }
     // op code & state machine
     switch (operation_)
     {
         case OPCODE::STOPPED:
-
-            PayloadControl::contServoWrite(0.0);
+            PositionControlLoop(stoppedEncoderLen_, 1);
             SwitchState(State::IDLE);
             operationDone_ = true;
             break;
@@ -82,7 +93,7 @@ void PayloadControl::UpdatePayload()
                 case State::IDLE:
 
                     contServoWrite(0);
-                    ControlLoop(encoderLen_, 0);
+                    PositionControlLoop(encoderLen_, 0);
                     SwitchState(State::UNSPOOL);    
                     waitTimerStart_ = millis();
                     break;
@@ -94,7 +105,7 @@ void PayloadControl::UpdatePayload()
                     if (millis() - waitTimerStart_ <= 1000) {
                         break;
                     }
-                    ControlLoop(pickupLen_, 0);
+                    PositionControlLoop(pickupLen_, 0);
                     if (abs(pickupLen_ - encoderLen_) < 0.1) {
                         waitTimerStart_ = millis();
                         SwitchState(State::WAIT);
@@ -102,8 +113,7 @@ void PayloadControl::UpdatePayload()
                     break;
 
                 case State::WAIT:
-
-                    ControlLoop(pickupLen_, 0);
+                    PositionControlLoop(pickupLen_, 0);
                     if (millis() - waitTimerStart_ >= pickupTime_ * 1000) {
                         SwitchState(State::RESPOOL);
                     }
@@ -112,15 +122,18 @@ void PayloadControl::UpdatePayload()
                 case State::RESPOOL:
 
                     if (encoderLen_ > 0.1) {
-                        ControlLoop(0.05, 0);  // go back to 0 height with encoder fb
+                        PositionControlLoop(0.05, 0);  // go back to 0 height with encoder fb
+                        waitTimerStart_ = millis();
                     }
                     else {
-                        contServoWrite(1.3);  // slowly retract
-                        if (force_ >= 10) { // if force is detected, stop
-                            ControlLoop(0, 1);
+                        VelocityControlLoop(-1.5);  // slowly retract
+
+                        // if force or encoder has not changed for a certain time then stop
+                        if (force_ >= 10 || (millis() - lastEncoderChangeTime_) > 700) { 
+                            encoderRawISR_ = 0;
+                            encoderLen_ = 0;
+                            stoppedEncoderLen_ = 0;
                             operation_ = OPCODE::STOPPED;
-                            operationDone_ = true;
-                            encoderRaw_ = 0;
                         }
                     } 
                     break;
@@ -133,7 +146,7 @@ void PayloadControl::UpdatePayload()
             {
                 case State::IDLE:
                     // enable hook servo
-                    ControlLoop(encoderLen_, 1);
+                    PositionControlLoop(encoderLen_, 1);
                     SwitchState(State::UNSPOOL);    
                     waitTimerStart_ = millis();
                     
@@ -144,7 +157,7 @@ void PayloadControl::UpdatePayload()
                         // store last water amount
                         break;
                     }
-                    ControlLoop(dispenseLen_, 1);
+                    PositionControlLoop(dispenseLen_, 1);
                     if (abs(dispenseLen_ - encoderLen_) < 0.2) {
                         waitTimerStart_ = millis();
                         SwitchState(State::WAIT);
@@ -152,43 +165,45 @@ void PayloadControl::UpdatePayload()
                     }
                     break;
                 case State::WAIT:
-                    ControlLoop(dispenseLen_, 1);
+                    PositionControlLoop(dispenseLen_, 1);
                     // logic here to check water levels
                     // if (current water amount - last water amount > 600) {
                     if (millis() - waitTimerStart_ >= 5 * 1000) {
                         SwitchState(State::RESPOOL);
-                        contServoWrite(-1.5);  // slowly retract
+                        contServoWrite(1);  // slowly retract
                     }
                     break;
                 case State::RESPOOL:
                     // slowly retract and wait for force sensor
-                    contServoWrite(1.5);  // slowly retract
+                    contServoWrite(1);  // slowly retract at 1.5 rad/s upwards
                     if (force_ >= 10) { // if force is detected, stop
-                        ControlLoop(0, 1);
+                        encoderRawISR_ = 0;
+                        encoderLen_ = 0;
+                        stoppedEncoderLen_ = 0;
                         operation_ = OPCODE::STOPPED;
-                        operationDone_ = true;
-                        encoderRaw_ = 0;
                     }
                     break;
             }
             break;
 
         case OPCODE::RESET:
+            operationDone_ = false;
             state_ = State::RESPOOL;
-            contServoWrite(2);  // slowly retract
-            hookServo_.write(1000);
+            VelocityControlLoop(-1);  // slowly retract
+            hookServo_.writeMicroseconds(1100);
+            
             // state transition condition
             if (force_ >= 10) { // if force is detected, stop
-                encoderRaw_ = 0;
-                ControlLoop(0, 1);
+                encoderRawISR_ = 0;
+                encoderLen_ = 0;
+                stoppedEncoderLen_ = 0;
                 operation_ = OPCODE::STOPPED;
-                operationDone_ = true;
             }
             break;
 
         case OPCODE::MANUAL:
-
-            ControlLoop(manualServoSetpoint_, 0);
+            operationDone_ = false;
+            PositionControlLoop(manualServoSetpoint_, 0);
             break;
         
         default:

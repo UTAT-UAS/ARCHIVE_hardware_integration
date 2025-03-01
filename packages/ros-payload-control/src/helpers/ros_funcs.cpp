@@ -13,20 +13,19 @@ void PayloadControl::RecieveStateCb(const std_msgs::Int32 &msg)
 void PayloadControl::PublishServoCommand()
 {
     // ros
-    servoVelMsg_.data = servoOutput_;
+    //servoVelMsg_.data = servoOutput_;
     //servoVelocityPub_.publish(&servoVelMsg_); 
 }
 
 void PayloadControl::PublishSensorsFb()
 {
-    noInterrupts();
     encoderLenFbMsg_.data = encoderLen_;
-    interrupts();
-
+    encoderVelMsg_.data = filteredVel_;
     forceMsg_.data = force_;
     waterlevelMsg_.data = waterlevel_;
 
     encoderLenPub_.publish(&encoderLenFbMsg_);
+    encoderVelPub_.publish(&encoderVelMsg_);
     forcePub_.publish(&forceMsg_);
     waterlevelPub_.publish(&waterlevelMsg_);    
 }

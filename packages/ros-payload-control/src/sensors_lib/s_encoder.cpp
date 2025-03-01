@@ -41,10 +41,29 @@ void IRAM_ATTR PayloadControl::ReadEncoder()
     encState_ = ttable[encState_ & 0x07][state];
     
     if (encState_ & DIR_CW) {
-        encoderRaw_++;
+        encoderRawISR_++;
     } else if (encState_ & DIR_CCW) {
-        encoderRaw_--;
+        encoderRawISR_--;
     }
-    encoderLen_ = ROT2LIN * encoderRaw_; // convert to meters
+    encoderLenISR_ = ROT2LIN * encoderRawISR_;
+    
+    
+}
 
+void PayloadControl::ProcessEncoder()
+{
+    noInterrupts();
+    lastEncoderLen_ = encoderLen_;
+    encoderLen_ = encoderLenISR_;
+    if (lastEncoderLen_ != encoderLenISR_) {
+        lastEncoderChangeTime_ = millis();
+    }
+    interrupts();
+
+    // filter velocity
+    float rawVelocity = (encoderLen_ - lastEncoderLen_) / dt_;
+    filteredVel_ = alphaVel_ * rawVelocity + (1 - alphaVel_) * filteredVel_;
+    if (fabs(filteredVel_) < 0.0001) {
+        filteredVel_ = 0;
+    }
 }

@@ -23,6 +23,7 @@ void setup() {
     // pubs
     //nh_.advertise(servoVelocityPub_);
     nh.advertise(pld.encoderLenPub_);
+    nh.advertise(pld.encoderVelPub_);
     nh.advertise(pld.stateMsgPub_);
     nh.advertise(pld.operationDonePub_);
     nh.advertise(pld.forcePub_);
