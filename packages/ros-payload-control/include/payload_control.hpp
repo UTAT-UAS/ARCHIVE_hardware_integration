@@ -39,6 +39,7 @@ public:
     ros::Publisher operationDonePub_;
     ros::Publisher forcePub_;
     ros::Publisher weightPub_;
+    ros::Publisher servoVelocityPub_;
 
 private:
     // ros //
@@ -46,7 +47,6 @@ private:
     void PublishOperationState();
     void PublishSensorsFb();
     ros::NodeHandle nh_;
-    //ros::Publisher servoVelocityPub_;
     std_msgs::Int32 stateMsg_;
     std_msgs::Bool operationDoneMsg_;
     std_msgs::Float32 servoVelMsg_;
@@ -81,7 +81,7 @@ private:
     void ForceSensorSetup();
     void ForceRead();
     int force1AnalogPin_ = 13;
-    int force2AnalogPin_ = 26;
+    int force2AnalogPin_ = 32;
 
     float filteredForce_{0};
     float force1_{0}; 
@@ -116,12 +116,12 @@ private:
     Servo hookServo_;
     Servo contServo_; // continous servo added
     int contServoPin_ = 14;
-    int hookServoPin_ = 27;
+    int hookServoPin_ = 23;
     float manualServoSetpoint_{0}; // position
 
     // pi position controller
-    float kp_{25};  
-    float ki_{18};
+    float kp_{50};  // 25
+    float ki_{12}; //18
     float dt_{0.033};  // 30 Hz
     float curError_;
     float lastError_;
@@ -132,8 +132,8 @@ private:
     // pi velocity controller
     float curVelError_;
     float velIntegral_{0};
-    float kpVel_{2};
-    float kiVel_{1};
+    float kpVel_{500};
+    float kiVel_{100};
     float velOutput_{0}; // velocity
 
     // state machine //
@@ -156,7 +156,7 @@ private:
     bool operationDone_{false};
     float waitTimerStart_{0};
     // ros parameters for easy tuning
-    float pickupLen_{2};
+    float pickupLen_{1.2};
     float pickupTime_{30};
     float dispenseLen_{0.03};
     float dispenseTime_{7};

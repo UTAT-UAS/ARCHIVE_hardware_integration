@@ -2,7 +2,7 @@
 
 void PayloadControl::LoadCellSetup()
 {
-    const long LOADCELL_DIVIDER = -2220;
+    const float LOADCELL_DIVIDER = -23;
 
     loadcell_.begin();
     loadcell_.setScale(LOADCELL_DIVIDER);

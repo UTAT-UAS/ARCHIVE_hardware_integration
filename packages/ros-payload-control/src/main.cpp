@@ -28,6 +28,7 @@ void setup() {
     nh.advertise(pld.operationDonePub_);
     nh.advertise(pld.forcePub_);
     nh.advertise(pld.weightPub_);
+    nh.advertise(pld.servoVelocityPub_);
 
     pld.SensorsSetup();
 }

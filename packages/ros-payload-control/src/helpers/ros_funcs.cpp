@@ -25,11 +25,13 @@ void PayloadControl::PublishSensorsFb()
     forceMsg_.point.x = force1_;
     forceMsg_.point.y = force2_;
     weightMsg_.data = weight_;
+    servoVelMsg_.data = servoOutput_;
 
     encoderLenPub_.publish(&encoderLenFbMsg_);
     encoderVelPub_.publish(&encoderVelMsg_);
     forcePub_.publish(&forceMsg_);
-    weightPub_.publish(&weightMsg_);    
+    weightPub_.publish(&weightMsg_); 
+    servoVelocityPub_.publish(&servoVelMsg_);   
 }
 
 void PayloadControl::PublishOperationState()
