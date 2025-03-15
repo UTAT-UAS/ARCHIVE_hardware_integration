@@ -27,7 +27,7 @@ void setup() {
     nh.advertise(pld.stateMsgPub_);
     nh.advertise(pld.operationDonePub_);
     nh.advertise(pld.forcePub_);
-    nh.advertise(pld.waterlevelPub_);
+    nh.advertise(pld.weightPub_);
 
     pld.SensorsSetup();
 }

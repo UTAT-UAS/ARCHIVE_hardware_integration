@@ -45,9 +45,8 @@ void IRAM_ATTR PayloadControl::ReadEncoder()
     } else if (encState_ & DIR_CCW) {
         encoderRawISR_--;
     }
+    
     encoderLenISR_ = ROT2LIN * encoderRawISR_;
-    
-    
 }
 
 void PayloadControl::ProcessEncoder()
