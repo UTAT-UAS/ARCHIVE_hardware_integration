@@ -9,7 +9,9 @@ PayloadControl::PayloadControl()
  forcePub_("/pld/force", &forceMsg_),
  weightPub_("/pld/water", &weightMsg_),
  servoVelocityPub_("/pld/servo_vel", &servoVelMsg_),
- loadcell_(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN)
+ loadcell_(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN),
+ posPID_(dt_, maxSpd_, -maxSpd_, kpPos_, kiPos_, 0, intClampPos, alphaPos_, alphaPosTau_),
+ velPID_(dt_, maxServoUsDelta_, -maxServoUsDelta_, kpVel_, kiVel_, 0, intClampVel_, alphaVel_, alphaVelTau_, -1)
 {
     instance_ = this;
 }
@@ -37,42 +39,25 @@ void PayloadControl::ReadSensors()
     LoadCellRead();
 }
 
-void PayloadControl::PositionControlLoop(float lenSetpoint, float hookSetpoint)
+void PayloadControl::HookControlLoop(float hookSetpoint)
 {
-    // pi controller
-    curError_ = lenSetpoint - encoderLen_;  // length error
-    //float derivative = (curError_ - lastError_) / dt_;
-    servoOutput_ = kp_ * curError_ + ki_ * integral_; 
-
-    // clamping
-    if (servoOutput_ >= maxSpd_) {servoOutput_ = maxSpd_;}
-    else if (servoOutput_ <= -maxSpd_) {servoOutput_ = -maxSpd_;}
-    else {integral_ += curError_ * dt_;}
-    lastError_ = curError_;
-    hookSetpoint = constrain(hookSetpoint, 0, 1);
-
-    // if error small reset
-    if (abs(curError_) < 0.002) {
-        servoOutput_ = 0;
-        integral_ = 0;
-    }
-
-    // write to servos
     hookServo_.writeMicroseconds(map(hookSetpoint, 0, 1, 1025, 1875));
-    servoOutput_ = map(servoOutput_, -maxSpd_, maxSpd_, 2000, 1000);
+}
+
+void PayloadControl::PositionControlLoop(float lenSetpoint)
+{
+    velOutput_ = posPID_.compute(lenSetpoint, encoderLen_);
+    servoOutput_ = velPID_.compute(velOutput_, encoderVel_);
+
+    // write to servo
     contServoWrite(servoOutput_);
 }
 
 void PayloadControl::VelocityControlLoop(float velSp)
 {
-    // i controller
-    curVelError_ = velSp - filteredVel_ ;  // velocity error
-    velIntegral_ += curVelError_ * dt_;
-    servoOutput_ = map((kpVel_ * curVelError_ + kiVel_ * velIntegral_), -maxSpd_, maxSpd_, 2000, 1000);
+    servoOutput_ = velPID_.compute(velSp, encoderVel_);
     contServoWrite(servoOutput_);
 }
-
-
 
 void PayloadControl::SwitchState(State state)
 {
@@ -81,7 +66,8 @@ void PayloadControl::SwitchState(State state)
 
 void PayloadControl::Stop()
 {
-    PositionControlLoop(stoppedEncoderLen_-0.002, 1);
+    PositionControlLoop(stoppedEncoderLen_);
+    HookControlLoop(1);
     SwitchState(State::IDLE);
     operationDone_ = true;
 }
@@ -94,7 +80,8 @@ void PayloadControl::Pickup()
         case State::IDLE:
 
             contServoWrite(1500);
-            PositionControlLoop(encoderLen_, 0);
+            PositionControlLoop(encoderLen_);
+            HookControlLoop(0);
             SwitchState(State::UNSPOOL);    
             stateSwitchStart_ = millis();
             break;
@@ -108,7 +95,8 @@ void PayloadControl::Pickup()
                 waitTimerStart_ = millis();
                 break;
             }
-            PositionControlLoop(pickupLen_, 0);
+            PositionControlLoop(pickupLen_);
+            HookControlLoop(0);
             if (millis() - waitTimerStart_ >= 1500) {
                 lastWeight_ = weight_;
                 waitTimerStart_ = millis();
@@ -129,7 +117,8 @@ void PayloadControl::Pickup()
             break;
 
         case State::WAIT:
-            PositionControlLoop(stoppedEncoderLen_, 0);
+            PositionControlLoop(stoppedEncoderLen_);
+            HookControlLoop(0);
             if (millis() - waitTimerStart_ >= pickupTime_ * 1000) {
                 stopDrop_ = false;
                 SwitchState(State::RESPOOL);
@@ -139,11 +128,12 @@ void PayloadControl::Pickup()
         case State::RESPOOL:
 
             if (encoderLen_ > 0.15) {
-                PositionControlLoop(0.1, 0);  // go back to 0 height with encoder fb
+                PositionControlLoop(0.10);  // go back to 0 height with encoder fb
+                HookControlLoop(0);
                 waitTimerStart_ = millis();
             }
             else {
-                VelocityControlLoop(-0.04);  // slowly retract
+                VelocityControlLoop(-0.02);  // slowly retract
 
                 if (millis() - waitTimerStart_ <= 2500) {
                     break;
@@ -169,7 +159,8 @@ void PayloadControl::Dispense()
     {
         case State::IDLE:
             // enable hook servo
-            PositionControlLoop(encoderLen_, 1);
+            PositionControlLoop(encoderLen_);
+            HookControlLoop(1);
             SwitchState(State::UNSPOOL);    
             waitTimerStart_ = millis();
             break;
@@ -179,7 +170,8 @@ void PayloadControl::Dispense()
                 lastWeight_ = weight_;
                 break;
             }
-            PositionControlLoop(dispenseLen_, 1);
+            PositionControlLoop(dispenseLen_);
+            HookControlLoop(1);
             if (abs(dispenseLen_ - encoderLen_) < 0.005) {
                 waitTimerStart_ = millis();
                 SwitchState(State::WAIT);
@@ -187,7 +179,8 @@ void PayloadControl::Dispense()
             }
             break;
         case State::WAIT:
-            PositionControlLoop(dispenseLen_, 1);
+            PositionControlLoop(dispenseLen_);
+            HookControlLoop(1);
             // logic here to check water levels
             // if (current water amount - last water amount > 600) {
             // if (loadCellIsTweaking_) {
@@ -237,7 +230,10 @@ void PayloadControl::Reset()
 void PayloadControl::Manual()
 {
     operationDone_ = false;
-    PositionControlLoop(manualServoSetpoint_, 0);
+    HookControlLoop(0);
+    PositionControlLoop(manualServoSetpoint_);
+    //VelocityControlLoop(manualServoSetpoint_);
+    //contServoWrite(MOVEMENT_DOWN_THRESH);
     return;
 }
 

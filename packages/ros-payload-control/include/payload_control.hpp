@@ -13,6 +13,8 @@
 #include <Wire.h>
 #include <VL6180X.h>
 #include <NBHX711.h>
+#include <position_controller.hpp>
+#include <velocity_controller.hpp>
 
 #define R 0.016
 #define ROT2LIN 2 * PI * R * (1.0 / 600) // 2 * pi * r * gear ratio
@@ -72,8 +74,8 @@ private:
     volatile float encoderLen_{0};
     volatile float lastEncoderLen_{0};
     volatile unsigned long lastEncoderChangeTime_{0};
-    float filteredVel_{0};
-    float alphaVel_{0.06};
+    float encoderVel_{0};
+    float alphaVelEnc_{0.06};
 
     float stoppedEncoderLen_{0.0};
 
@@ -88,7 +90,7 @@ private:
     float force2_{0};
     float rawForce1_{0};
     float rawForce2_{0};
-    float alpha_{0.2};  // smoothing factor
+    float alphaForce_{0.2};  // smoothing factor
     float forceThreshold_{20.0};
     
     // water level //
@@ -99,17 +101,18 @@ private:
     const int LOADCELL_DOUT_PIN = 18;
     const int LOADCELL_SCK_PIN = 5;
     int loadCellOffset_{0};
-    NBHX711 loadcell_;
     bool loadCellIsTweaking_{false};
     int32_t loadCellTweakCount_{0}; 
     float weightAlpha_{0.1};
+    NBHX711 loadcell_;
 
     void LoadCellSetup();
     void LoadCellRead();
     float Tare(int32_t num);
 
     // servo control //
-    void PositionControlLoop(float lenSetpoint, float hookSetpoint);
+    void HookControlLoop(float hookSetpoint);
+    void PositionControlLoop(float lenSetpoint);
     void VelocityControlLoop(float rps);
     void contServoAttach();
     void contServoWrite(int us);
@@ -120,22 +123,30 @@ private:
     float manualServoSetpoint_{0}; // position
     bool stopDrop_{false};
 
-    // pi position controller
-    float kp_{100};  // 25
-    float ki_{20}; //18
+    // controller vars
     float dt_{0.033};  // 30 Hz
-    float curError_;
-    float lastError_;
-    float integral_{0};
-    float maxSpd_{5.759*2};  // 5.759 rad/s at max speed
-    float servoOutput_{0}; 
+
+    // pi position controller
+    float kpPos_{0.95};  // 25
+    float kiPos_{0}; //18
+    float intClampPos{0.003};
+    float alphaPos_{0.1};
+    float alphaPosTau_{0.1};
+    float maxSpd_{0.1};  // 10 cm/s at max speed
+    float velOutput_{0}; // velocity
 
     // pi velocity controller
-    float curVelError_;
-    float velIntegral_{0};
-    float kpVel_{500};
-    float kiVel_{100};
-    float velOutput_{0}; // velocity
+    float kpVel_{4000};
+    float kiVel_{150};
+    float intClampVel_{500};
+    float maxServoUsDelta_{500};
+    float alphaVel_{0.1};
+    float alphaVelTau_{0.1};
+    float servoOutput_{0}; 
+
+    // controller objects
+    PositionPID posPID_;
+    VelocityPID velPID_;
 
     // state machine //
     enum class OPCODE {
@@ -166,8 +177,8 @@ private:
     // ros parameters for easy tuning
     float pickupLen_{0.4};
     float pickupTime_{10};
-    float dispenseLen_{0.03};
-    float dispenseTime_{18};
+    float dispenseLen_{0.02};
+    float dispenseTime_{10};
 
     // other //
     static PayloadControl* instance_;

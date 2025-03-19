@@ -20,12 +20,13 @@ void PayloadControl::PublishServoCommand()
 void PayloadControl::PublishSensorsFb()
 {
     encoderLenFbMsg_.data = encoderLen_;
-    encoderVelMsg_.data = filteredVel_;
+    encoderVelMsg_.data = encoderVel_;
     forceMsg_.header.stamp = nh_.now();
     forceMsg_.point.x = force1_;
     forceMsg_.point.y = force2_;
     weightMsg_.data = weight_;
-    servoVelMsg_.data = stopDrop_;
+    //weightMsg_.data = velPID_.velZ_.integral_ * kiVel_;
+    servoVelMsg_.data = velOutput_;
 
     encoderLenPub_.publish(&encoderLenFbMsg_);
     encoderVelPub_.publish(&encoderVelMsg_);

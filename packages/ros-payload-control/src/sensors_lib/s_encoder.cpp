@@ -61,8 +61,8 @@ void PayloadControl::ProcessEncoder()
 
     // filter velocity
     float rawVelocity = (encoderLen_ - lastEncoderLen_) / dt_;
-    filteredVel_ = alphaVel_ * rawVelocity + (1 - alphaVel_) * filteredVel_;
-    if (fabs(filteredVel_) < 0.0001) {
-        filteredVel_ = 0;
+    encoderVel_ = alphaVelEnc_ * rawVelocity + (1 - alphaVelEnc_) * encoderVel_;
+    if (fabs(encoderVel_) < 0.0001) {
+        encoderVel_ = 0;
     }
 }
