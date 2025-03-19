@@ -89,7 +89,7 @@ private:
     float rawForce1_{0};
     float rawForce2_{0};
     float alpha_{0.2};  // smoothing factor
-    float forceThreshold_{20};
+    float forceThreshold_{20.0};
     
     // water level //
 
@@ -102,7 +102,7 @@ private:
     NBHX711 loadcell_;
     bool loadCellIsTweaking_{false};
     int32_t loadCellTweakCount_{0}; 
-    float weightAlpha_{0.2};
+    float weightAlpha_{0.1};
 
     void LoadCellSetup();
     void LoadCellRead();
@@ -118,10 +118,11 @@ private:
     int contServoPin_ = 14;
     int hookServoPin_ = 23;
     float manualServoSetpoint_{0}; // position
+    bool stopDrop_{false};
 
     // pi position controller
-    float kp_{50};  // 25
-    float ki_{12}; //18
+    float kp_{100};  // 25
+    float ki_{20}; //18
     float dt_{0.033};  // 30 Hz
     float curError_;
     float lastError_;
@@ -151,15 +152,22 @@ private:
         RESPOOL
     };
     void SwitchState(State state);
+    void Stop();
+    void Pickup();
+    void Dispense();
+    void Reset();
+    void Manual();
+
     OPCODE operation_{OPCODE::STOPPED};
     State state_{State::IDLE};
     bool operationDone_{false};
     float waitTimerStart_{0};
+    float stateSwitchStart_{0};
     // ros parameters for easy tuning
-    float pickupLen_{1.2};
-    float pickupTime_{30};
+    float pickupLen_{0.4};
+    float pickupTime_{10};
     float dispenseLen_{0.03};
-    float dispenseTime_{7};
+    float dispenseTime_{18};
 
     // other //
     static PayloadControl* instance_;
