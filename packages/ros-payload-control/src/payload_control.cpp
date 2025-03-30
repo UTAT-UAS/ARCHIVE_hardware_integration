@@ -187,19 +187,23 @@ void PayloadControl::Dispense()
             if (millis() - waitTimerStart_ >= dispenseTime_ * 1000) {
                 SwitchState(State::RESPOOL);
                 contServoWrite(MOVEMENT_UP_THRESH + 100);  // slowly retract
+                waitTimerStart_ = millis();
             }
             // }
             // if (lastWeight_ - weight_ > 400) {
             //     SwitchState(State::RESPOOL);
             //     contServoWrite(MOVEMENT_UP_THRESH + 100);  // slowly retract
             // }
-
+            
             break;
         case State::RESPOOL:
-            // slowly retract and wait for force sensor
+            // slowly retract, wait for force sensor   
+            if (millis() - waitTimerStart_ <= 1000) {
+                break;
+            }
 
-            contServoWrite(MOVEMENT_UP_THRESH + 150);  // slowly retract at 1.5 rad/s upwards
-            if (force1_ >= forceThreshold_ && force2_ >= forceThreshold_) { // if force is detected, stop
+            contServoWrite(MOVEMENT_UP_THRESH + 150);  // slowly retract upwards
+            if (force1_ >= forceThreshold_ && force2_ >= forceThreshold_ || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
                 encoderRawISR_ = 0;
                 encoderLen_ = 0;
                 stoppedEncoderLen_ = 0;
@@ -213,16 +217,29 @@ void PayloadControl::Dispense()
 void PayloadControl::Reset()
 {
     operationDone_ = false;
-    state_ = State::RESPOOL;
-    VelocityControlLoop(-0.05);  // slowly retract
-    hookServo_.writeMicroseconds(1100);
-    
-    // state transition condition
-    if (force1_ >= forceThreshold_ && force2_ >= forceThreshold_) { // if force is detected, stop
-        encoderRawISR_ = 0;
-        encoderLen_ = 0;
-        stoppedEncoderLen_ = 0;
-        operation_ = OPCODE::STOPPED;
+    switch (state_)
+    {
+    case State::IDLE:
+        hookServo_.writeMicroseconds(1100);
+        VelocityControlLoop(-0.05);  // slowly retract
+        waitTimerStart_ = millis();
+        SwitchState(State::RESPOOL);
+        break;
+    case State::RESPOOL:
+        // wait for dynamics
+        VelocityControlLoop(-0.05); 
+        if (millis() - waitTimerStart_ <= 1000) {
+            break;
+        }
+        // state transition condition
+        if (force1_ >= forceThreshold_ && force2_ >= forceThreshold_ || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
+            encoderRawISR_ = 0;
+            encoderLen_ = 0;
+            stoppedEncoderLen_ = 0;
+            operation_ = OPCODE::STOPPED;
+        }
+    default:
+        break;
     }
     return;
 }

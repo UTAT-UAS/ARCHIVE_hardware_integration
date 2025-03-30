@@ -175,10 +175,10 @@ private:
     float waitTimerStart_{0};
     float stateSwitchStart_{0};
     // ros parameters for easy tuning
-    float pickupLen_{0.4};
-    float pickupTime_{10};
-    float dispenseLen_{0.02};
-    float dispenseTime_{10};
+    float pickupLen_{2.25};
+    float pickupTime_{30};
+    float dispenseLen_{0.025};
+    float dispenseTime_{15};
 
     // other //
     static PayloadControl* instance_;
