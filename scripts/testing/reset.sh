@@ -8,4 +8,4 @@ fi
 cp ~/.savedrc ~/.bashrc
 rm ~/.savedrc
 
-echo "Environment reverted"i, re-source .bashrc"
+echo "Environment reverted, re-source .bashrc"

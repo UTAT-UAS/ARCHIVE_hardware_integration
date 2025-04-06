@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+
+tblk='\e[0;30m' # Black - Regular
+tred='\e[0;31m' # Red
+tgrn='\e[0;32m' # Green
+tylw='\e[0;33m' # Yellow
+tblu='\e[0;34m' # Blue
+tpur='\e[0;35m' # Purple
+tcyn='\e[0;36m' # Cyan
+twht='\e[0;37m' # White
+rst='\e[0m'     # Text Reset
+
+print_help() {
+    echo -e $tcyn"AEAC AUTO LAUNCHER"$rst
+    echo "Helper script to create a tmux session and run required setup scripts"
+    echo ""
+    echo "ARGS:"
+    echo "-a AUTO       Auto launch using a defined string"
+    echo "-i            Interactive mode - WIP"
+    echo "-h            This message"
+    echo ""
+    echo "AUTO:"
+    echo "[m]avros, [i]r, [b]ucket"
+    exit 0
+}
+
+wait_for_tmux() {
+    while true; do
+        TMUXSESSIONS=$(tmux list-sessions 2>&1)
+        if [[ ! $TMUXSESSIONS =~ ^no ]]; then
+            sleep 0.1
+            break
+        fi
+        sleep 0.1
+    done
+}
+
+print_message() {
+    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;34m$1\e[0m\""
+    tmux send-keys -t "0:flight-stack" "ENTER"
+}
+
+print_ready() {
+    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;32mSETUP COMPLETE\e[0m\""
+    tmux send-keys -t "0:flight-stack" "ENTER"
+}
+
+mavros_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
+
+    tmux send-keys -t "0:0" "roslaunch simulation_testing mavros.launch"
+    tmux send-keys -t "0:0" "ENTER"
+}
+
+ir_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" cv-model
+    tmux rename-window -t "0:2" flight-stack
+
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch"
+    tmux send-keys -t "0:0" "ENTER"
+    sleep 3
+    print_message "initializing cv model..."
+    tmux send-keys -t "0:1" "rosrun computer_vision ir_detector.py"
+    tmux send-keys -t "0:1" "ENTER"
+    sleep 3
+    print_ready
+    tmux send-keys -t "0:1" "rosrun simulation_testing test_task1.py"
+}
+
+bucket_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux new-window
+    tmux new-window
+    tmux new-window
+    tmux rename-window -t "0:0" luxonis
+    tmux rename-window -t "0:1" roslaunch
+    tmux rename-window -t "0:2" payload
+    tmux rename-window -t "0:3" cv-model
+    tmux rename-window -t "0:4" flight-stack
+
+    print_message "running luxonis bridge..."
+    tmux send-keys -t "0:0" "OAK"
+    tmux send-keys -t "0:0" "ENTER"
+    sleep 3
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch"
+    tmux send-keys -t "0:1" "ENTER"
+    sleep 3
+    print_message "running rosserial..."
+    tmux send-keys -t "0:2" "rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:="
+    tmux send-keys -t "0:2" "ENTER"
+    print_message "initializing cv model..."
+    tmux send-keys -t "0:3" "rosrun computer_vision bucket_detector.py"
+    tmux send-keys -t "0:3" "ENTER"
+    sleep 3
+    print_ready
+    tmux send-keys -t "0:4" "rosrun simulation_testing test_"
+}
+
+auto_launch() {
+    case ${1} in
+    m)
+        mavros_launch &
+        tmux
+        ;;
+    i)
+        ir_launch &
+        tmux
+        ;;
+    b)
+        bucket_launch &
+        tmux
+        ;;
+    esac
+    exit 0
+}
+
+interactive_mode() {
+
+    echo -e $tgrn"AEAC AUTO LAUNCHER"$rst
+
+    # template
+    # VARNAME="input"
+    # while true; do
+    #     read -p "" VARNAME
+    #     if [[ $VARNAME =~ ^$ ]]; then
+    #         break
+    #     fi
+    #     echo -e $tred"invalid input"$rst
+    # done
+
+    flightstack="input"
+    while true; do
+        read -p "Launch flight stack [y] or just launch mavros [m]" flightstack
+        if [[ $flightstack =~ ^m$ ]]; then
+            mavros_launch &
+            tmux
+            exit 0
+        fi
+        if [[ $flightstack =~ ^y$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    # TODO other input types
+
+    camera="input"
+    while true; do
+        read -p "Luxonis [l], IR [i], None [n]: " camera
+        if [[ $camera =~ ^[lin]{1}$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    echo $camera
+    exit 0
+}
+
+if [[ ! -z $TMUX ]]; then
+    echo -e $tred"Running inside a tmux session forbidden"$rst
+    exit 1
+fi
+
+TMUXSESSIONS=$(tmux list-sessions 2>&1)
+if [[ ! $TMUXSESSIONS =~ ^no ]]; then
+    echo -e $tred"Running script with existing tmux sessions not supported"$rst
+    exit 1
+fi
+
+if [ "$#" -ne 1 ]; then
+    print_help
+    exit 0
+fi
+
+while getopts a:hi opts; do
+    case ${opts} in
+    i) interactive_mode ;;
+    a) auto_launch $OPTARG ;;
+    h) print_help ;;
+    esac
+done
