@@ -47,7 +47,7 @@ print_message() {
 }
 
 print_ready() {
-    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;32mSETUP COMPLETE\e[0m\""
+    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;32mALL SCRIPTS RUN (double check please)\e[0m\""
     tmux send-keys -t "0:flight-stack" "ENTER"
 }
 
@@ -73,7 +73,7 @@ camera_launch() {
     print_message "running luxonis bridge..."
     tmux send-keys -t "0:0" "OAK"
     tmux send-keys -t "0:0" "ENTER"
-    sleep 3
+    sleep 5
     print_message "running roslaunch..."
     tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
     tmux send-keys -t "0:1" "ENTER"
@@ -132,7 +132,7 @@ bucket_launch() {
     print_message "running luxonis bridge..."
     tmux send-keys -t "0:0" "OAK"
     tmux send-keys -t "0:0" "ENTER"
-    sleep 3
+    sleep 5
     print_message "running roslaunch..."
     tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
     tmux send-keys -t "0:1" "ENTER"
