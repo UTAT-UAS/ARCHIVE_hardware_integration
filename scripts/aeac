@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+GCS="100.64.0.1"
+GST="100.64.0.5"
+
 tblk='\e[0;30m' # Black - Regular
 tred='\e[0;31m' # Red
 tgrn='\e[0;32m' # Green
@@ -51,7 +54,7 @@ mavros_launch() {
     tmux rename-window -t "0:0" roslaunch
     tmux rename-window -t "0:1" flight-stack
 
-    tmux send-keys -t "0:0" "roslaunch simulation_testing mavros.launch"
+    tmux send-keys -t "0:0" "roslaunch simulation_testing mavros.launch gcs_url:=udp://:14551@$GCS:14550"
     tmux send-keys -t "0:0" "ENTER"
 }
 
@@ -64,7 +67,7 @@ ir_launch() {
     tmux rename-window -t "0:2" flight-stack
 
     print_message "running roslaunch..."
-    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch"
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
     tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_message "initializing cv model..."
@@ -92,11 +95,11 @@ bucket_launch() {
     tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_message "running roslaunch..."
-    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch"
+    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
     tmux send-keys -t "0:1" "ENTER"
     sleep 3
     print_message "running rosserial..."
-    tmux send-keys -t "0:2" "rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:="
+    tmux send-keys -t "0:2" "rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=115200"
     tmux send-keys -t "0:2" "ENTER"
     print_message "initializing cv model..."
     tmux send-keys -t "0:3" "rosrun computer_vision bucket_detector.py"
@@ -124,6 +127,38 @@ auto_launch() {
     exit 0
 }
 
+auto_select() {
+    auto="input"
+    while true; do
+        echo "mavros [m]"
+        echo "ir:    [i]"
+        echo "bucket [b]"
+        read -p "> " auto
+        if [[ $flightstack =~ ^[mib]{1}$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    while true; do
+        read -p "gcs_url (default $GCS): " GCS
+        if [[ $GCS =~ ^[0-9]{3}\.[0-9]{2}\.[0-9]{1}\.[0-9]{1}$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    while true; do
+        read -p "gst_url (default $GCS): " GCS
+        if [[ $GST =~ ^[0-9]{3}\.[0-9]{2}\.[0-9]{1}\.[0-9]{1}$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    auto_launch $auto
+}
+
 interactive_mode() {
 
     echo -e $tgrn"AEAC AUTO LAUNCHER"$rst
@@ -140,14 +175,21 @@ interactive_mode() {
 
     flightstack="input"
     while true; do
-        read -p "Launch flight stack [y] or just launch mavros [m]" flightstack
-        if [[ $flightstack =~ ^m$ ]]; then
+        echo "Custom launch settings: [1]"
+        echo "Launch mavros:          [2]"
+        echo "Select auto launcher    [3]"
+        echo "|- with custom params      "
+        read -p "> " flightstack
+        if [[ $flightstack =~ ^1$ ]]; then
+            break
+        fi
+        if [[ $flightstack =~ ^2$ ]]; then
             mavros_launch &
             tmux
             exit 0
         fi
-        if [[ $flightstack =~ ^y$ ]]; then
-            break
+        if [[ $flightstack =~ ^3$ ]]; then
+            auto_select
         fi
         echo -e $tred"invalid input"$rst
     done
@@ -182,6 +224,9 @@ if [ "$#" -ne 1 ]; then
     print_help
     exit 0
 fi
+
+# TODO parser for params like --gst instead of having to use auto selector
+# probably switch to getopt because we don't need cross platform
 
 while getopts a:hi opts; do
     case ${opts} in
