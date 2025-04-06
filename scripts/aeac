@@ -67,6 +67,7 @@ camera_launch() {
     tmux new-window
     tmux rename-window -t "0:0" luxonis
     tmux rename-window -t "0:1" roslaunch
+    tmux rename-window -t "0:2" flight-stack
     sleep 1
 
     print_message "running luxonis bridge..."
@@ -84,6 +85,7 @@ ir_camera_launch() {
     wait_for_tmux
     tmux new-window
     tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
     sleep 1
 
     print_message "running roslaunch..."
