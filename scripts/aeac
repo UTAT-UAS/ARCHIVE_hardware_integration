@@ -26,7 +26,7 @@ print_help() {
     echo "-h            This message"
     echo ""
     echo "AUTO:"
-    echo "[m]avros, [i]r, [b]ucket"
+    echo "[m]avros, [i]r, [b]ucket, [c]amera, i[r] camera"
     exit 0
 }
 
@@ -59,6 +59,38 @@ mavros_launch() {
 
     tmux send-keys -t "0:0" "roslaunch simulation_testing mavros.launch gcs_url:=udp://:14551@$GCS:14550"
     tmux send-keys -t "0:0" "ENTER"
+}
+
+camera_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux new-window
+    tmux rename-window -t "0:0" luxonis
+    tmux rename-window -t "0:1" roslaunch
+    sleep 1
+
+    print_message "running luxonis bridge..."
+    tmux send-keys -t "0:0" "OAK"
+    tmux send-keys -t "0:0" "ENTER"
+    sleep 3
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
+    tmux send-keys -t "0:1" "ENTER"
+    sleep 3
+    print_ready
+}
+
+ir_camera_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    sleep 1
+
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
+    tmux send-keys -t "0:0" "ENTER"
+    sleep 3
+    print_ready
 }
 
 ir_launch() {
@@ -131,6 +163,16 @@ auto_launch() {
         tmux
         exit 0
         ;;
+    c)
+        camera_launch &
+        tmux
+        exit 0
+        ;;
+    r)
+        ir_camera_launch &
+        tmux
+        exit 0
+        ;;
     esac
     echo -e $tred"Auto launch option \"${1}\" not found"$rst
 }
@@ -169,8 +211,10 @@ auto_select() {
         echo "mavros [m]"
         echo "ir:    [i]"
         echo "bucket [b]"
+        echo "camera [c]"
+        echo "ir cam [r]"
         read -p "> " auto
-        if [[ $auto =~ ^[mib]{1}$ ]]; then
+        if [[ $auto =~ ^[mibcr]{1}$ ]]; then
             break
         fi
         echo -e $tred"invalid input"$rst
