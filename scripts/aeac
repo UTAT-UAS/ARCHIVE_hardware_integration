@@ -15,11 +15,14 @@ rst='\e[0m'     # Text Reset
 
 print_help() {
     echo -e $tcyn"AEAC AUTO LAUNCHER"$rst
-    echo "Helper script to create a tmux session and run required setup scripts"
+    echo "Helper script to create a tmux session and run required setup scripts."
+    echo "Interactive mode allows setting params and customizing launch"
+    echo ""
+    echo "run \"aeac -i\" for interactive mode"
     echo ""
     echo "ARGS:"
-    echo "-a AUTO       Auto launch using a defined string"
-    echo "-i            Interactive mode - WIP"
+    echo "-a AUTO       Auto launch using a preset mode"
+    echo "-i            Interactive mode"
     echo "-h            This message"
     echo ""
     echo "AUTO:"
@@ -65,6 +68,7 @@ ir_launch() {
     tmux rename-window -t "0:0" roslaunch
     tmux rename-window -t "0:1" cv-model
     tmux rename-window -t "0:2" flight-stack
+    sleep 1
 
     print_message "running roslaunch..."
     tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
@@ -89,6 +93,7 @@ bucket_launch() {
     tmux rename-window -t "0:2" payload
     tmux rename-window -t "0:3" cv-model
     tmux rename-window -t "0:4" flight-stack
+    sleep 1
 
     print_message "running luxonis bridge..."
     tmux send-keys -t "0:0" "OAK"
@@ -114,17 +119,48 @@ auto_launch() {
     m)
         mavros_launch &
         tmux
+        exit 0
         ;;
     i)
         ir_launch &
         tmux
+        exit 0
         ;;
     b)
         bucket_launch &
         tmux
+        exit 0
         ;;
     esac
-    exit 0
+    echo -e $tred"Auto launch option \"${1}\" not found"$rst
+}
+
+ip_input() {
+    gcs_temp="input"
+    while true; do
+        read -p "gcs_url (default $GCS): " gcs_temp
+        if [[ -z $gcs_temp ]]; then
+            break
+        fi
+        if [[ $gcs_temp =~ ^[0-9]{3}\.[0-9]{2}\.[0-9]{1}\.[0-9]{1}$ ]]; then
+            GCS=$gcs_temp
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    gst_temp="input"
+    while true; do
+        read -p "gst_url (default $GST): " gst_temp
+        if [[ -z $gst_temp ]]; then
+            break
+        fi
+        if [[ $gst_temp =~ ^[0-9]{3}\.[0-9]{2}\.[0-9]{1}\.[0-9]{1}$ ]]; then
+            GST=$gst_temp
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
 }
 
 auto_select() {
@@ -134,27 +170,13 @@ auto_select() {
         echo "ir:    [i]"
         echo "bucket [b]"
         read -p "> " auto
-        if [[ $flightstack =~ ^[mib]{1}$ ]]; then
+        if [[ $auto =~ ^[mib]{1}$ ]]; then
             break
         fi
         echo -e $tred"invalid input"$rst
     done
 
-    while true; do
-        read -p "gcs_url (default $GCS): " GCS
-        if [[ $GCS =~ ^[0-9]{3}\.[0-9]{2}\.[0-9]{1}\.[0-9]{1}$ ]]; then
-            break
-        fi
-        echo -e $tred"invalid input"$rst
-    done
-
-    while true; do
-        read -p "gst_url (default $GCS): " GCS
-        if [[ $GST =~ ^[0-9]{3}\.[0-9]{2}\.[0-9]{1}\.[0-9]{1}$ ]]; then
-            break
-        fi
-        echo -e $tred"invalid input"$rst
-    done
+    ip_input
 
     auto_launch $auto
 }
@@ -175,15 +197,18 @@ interactive_mode() {
 
     flightstack="input"
     while true; do
-        echo "Custom launch settings: [1]"
-        echo "Launch mavros:          [2]"
-        echo "Select auto launcher    [3]"
-        echo "|- with custom params      "
+        echo "Full custom launch: WIP [1]"
+        echo "Launch MAVROS:          [2]"
+        echo " ∟ with custom params      "
+        echo "Launch auto launcher:   [3]"
+        echo " ∟ with custom params      "
         read -p "> " flightstack
         if [[ $flightstack =~ ^1$ ]]; then
             break
         fi
         if [[ $flightstack =~ ^2$ ]]; then
+            echo -e $tgrn"MAVROS Launcher"$rst
+            ip_input
             mavros_launch &
             tmux
             exit 0
@@ -195,6 +220,7 @@ interactive_mode() {
     done
 
     # TODO other input types
+    # move auto launcher parts to functions to allow interactive selector to choose what runs
 
     camera="input"
     while true; do
@@ -215,12 +241,12 @@ if [[ ! -z $TMUX ]]; then
 fi
 
 TMUXSESSIONS=$(tmux list-sessions 2>&1)
-if [[ ! $TMUXSESSIONS =~ ^no ]]; then
+if [[ ! $TMUXSESSIONS =~ ^no && ! $TMUXSESSIONS =~ ^error ]]; then
     echo -e $tred"Running script with existing tmux sessions not supported"$rst
     exit 1
 fi
 
-if [ "$#" -ne 1 ]; then
+if [ "$#" -eq 0 ]; then
     print_help
     exit 0
 fi
