@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
+# Defaults
 GCS="100.64.0.1"
 GST="100.64.0.5"
 
+# Color escape codes
 tblk='\e[0;30m' # Black - Regular
 tred='\e[0;31m' # Red
 tgrn='\e[0;32m' # Green
@@ -15,8 +17,9 @@ rst='\e[0m'     # Text Reset
 
 print_help() {
     echo -e $tcyn"AEAC AUTO LAUNCHER"$rst
+    echo ""
     echo "Helper script to create a tmux session and run required setup scripts."
-    echo "Interactive mode allows setting params and customizing launch"
+    echo "Interactive mode allows setting params and customizing script launch."
     echo ""
     echo "run \"aeac -i\" for interactive mode"
     echo ""
@@ -47,7 +50,7 @@ print_message() {
 }
 
 print_ready() {
-    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;32mALL SCRIPTS RUN (double check please)\e[0m\""
+    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;32mALL SCRIPTS STARTED\e[0m\""
     tmux send-keys -t "0:flight-stack" "ENTER"
 }
 
@@ -59,6 +62,7 @@ mavros_launch() {
 
     tmux send-keys -t "0:0" "roslaunch simulation_testing mavros.launch gcs_url:=udp://:14551@$GCS:14550"
     tmux send-keys -t "0:0" "ENTER"
+    print_ready
 }
 
 camera_launch() {
@@ -113,7 +117,7 @@ ir_launch() {
     tmux send-keys -t "0:1" "ENTER"
     sleep 3
     print_ready
-    tmux send-keys -t "0:1" "rosrun simulation_testing test_task1.py"
+    tmux send-keys -t "0:2" "rosrun simulation_testing test_task1.py"
 }
 
 bucket_launch() {
@@ -242,12 +246,10 @@ interactive_mode() {
     # done
 
     flightstack="input"
+    echo -e "Full custom launch: WIP $tblu[1]$rst"
+    echo -e "Launch MAVROS:          $tblu[2]$rst"
+    echo -e "Launch auto launcher:   $tblu[3]$rst"
     while true; do
-        echo "Full custom launch: WIP [1]"
-        echo "Launch MAVROS:          [2]"
-        echo " ∟ with custom params      "
-        echo "Launch auto launcher:   [3]"
-        echo " ∟ with custom params      "
         read -p "> " flightstack
         if [[ $flightstack =~ ^1$ ]]; then
             break
