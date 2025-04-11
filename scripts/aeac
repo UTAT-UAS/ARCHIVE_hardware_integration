@@ -3,6 +3,7 @@
 # Defaults
 GCS="100.64.0.1"
 GST="100.64.0.5"
+DRONE="cyclone"
 
 # Color escape codes
 tblk='\e[0;30m' # Black - Regular
@@ -29,7 +30,7 @@ print_help() {
     echo "-h            This message"
     echo ""
     echo "AUTO:"
-    echo "[m]avros, [i]r, [b]ucket, [c]amera, i[r] camera"
+    echo "[m]avros, [n]ormal, [i]r, [b]ucket, [c]amera, i[r] camera"
     exit 0
 }
 
@@ -65,6 +66,17 @@ mavros_launch() {
     print_ready
 }
 
+normal_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
+
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real.launch gcs_url:=udp://:14551@$GCS:14550 param_file:="$DRONE"_real.yaml"
+    tmux send-keys -t "0:0" "ENTER"
+    print_ready
+}
+
 camera_launch() {
     wait_for_tmux
     tmux new-window
@@ -79,7 +91,7 @@ camera_launch() {
     tmux send-keys -t "0:0" "ENTER"
     sleep 5
     print_message "running roslaunch..."
-    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
+    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
     tmux send-keys -t "0:1" "ENTER"
     sleep 3
     print_ready
@@ -93,7 +105,7 @@ ir_camera_launch() {
     sleep 1
 
     print_message "running roslaunch..."
-    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_r.yaml"
     tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_ready
@@ -109,7 +121,7 @@ ir_launch() {
     sleep 1
 
     print_message "running roslaunch..."
-    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml"
     tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_message "initializing cv model..."
@@ -138,7 +150,7 @@ bucket_launch() {
     tmux send-keys -t "0:0" "ENTER"
     sleep 5
     print_message "running roslaunch..."
-    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST"
+    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
     tmux send-keys -t "0:1" "ENTER"
     sleep 3
     print_message "running rosserial..."
@@ -156,6 +168,11 @@ auto_launch() {
     case ${1} in
     m)
         mavros_launch &
+        tmux
+        exit 0
+        ;;
+    n)
+        normal_launch &
         tmux
         exit 0
         ;;
@@ -181,6 +198,22 @@ auto_launch() {
         ;;
     esac
     echo -e $tred"Auto launch option \"${1}\" not found"$rst
+}
+
+drone_input() {
+    drone_temp="input"
+    while true; do
+        echo "choose drone - cyclone, vulcan, tomathy"
+        read -p "(default $DRONE): " drone_temp
+        if [[ -z $drone_temp ]]; then
+            break
+        fi
+        if [[ $drone_temp =~ ^(cyclone|vulcan|tomathy)$ ]]; then
+            DRONE=$drone_temp
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
 }
 
 ip_input() {
@@ -215,18 +248,20 @@ auto_select() {
     auto="input"
     while true; do
         echo "mavros [m]"
+        echo "normal [n]"
         echo "ir:    [i]"
         echo "bucket [b]"
         echo "camera [c]"
         echo "ir cam [r]"
         read -p "> " auto
-        if [[ $auto =~ ^[mibcr]{1}$ ]]; then
+        if [[ $auto =~ ^[mnibcr]{1}$ ]]; then
             break
         fi
         echo -e $tred"invalid input"$rst
     done
 
     ip_input
+    drone_input
 
     auto_launch $auto
 }
@@ -247,8 +282,8 @@ interactive_mode() {
 
     flightstack="input"
     echo -e "Full custom launch: WIP $tblu[1]$rst"
-    echo -e "Launch MAVROS:          $tblu[2]$rst"
-    echo -e "Launch auto launcher:   $tblu[3]$rst"
+    echo -e "Launch MAVROS (GCS):    $tblu[2]$rst"
+    echo -e "Select auto launcher:   $tblu[3]$rst"
     while true; do
         read -p "> " flightstack
         if [[ $flightstack =~ ^1$ ]]; then
