@@ -157,7 +157,7 @@ bucket_launch() {
     tmux send-keys -t "0:2" "rosrun rosserial_python serial_node.py _port:=/dev/payload_serial _baud:=115200"
     tmux send-keys -t "0:2" "ENTER"
     print_message "initializing cv model..."
-    tmux send-keys -t "0:3" "rosrun computer_vision bucket_detector.py"
+    tmux send-keys -t "0:3" "rosrun computer_vision bucket_detector_p.py"
     tmux send-keys -t "0:3" "ENTER"
     sleep 3
     print_ready
