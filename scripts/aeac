@@ -25,13 +25,30 @@ print_help() {
     echo "run \"aeac -i\" for interactive mode"
     echo ""
     echo "ARGS:"
-    echo "-a AUTO       Auto launch using a preset mode"
+    echo "-a AUTO       Auto launch using a preset mode WIP"
     echo "-i            Interactive mode"
     echo "-h            This message"
     echo ""
     echo "AUTO:"
     echo "[m]avros, [n]ormal, [i]r, [b]ucket, [c]amera, i[r] camera"
     exit 0
+}
+
+print_logo() {
+    echo "                               /          "
+    echo "                              //          "
+    echo "                            .//           "
+    echo "   ************************/  |***********"
+    echo "     __    __  _______   / _  |  _______  "
+    echo "    / /   / / /_. .__/  / / | | /_. .__/  "
+    echo "   | |    | |   | |   / /_/\| '   | |     "
+    echo "   ' \___/ '   | |   / /    ||   | |      "
+    echo "    \_____/    '_' /./      .|   '_'      "
+    echo "******************//********||*********   "
+    echo "                 //         |/            "
+    echo "               //                         "
+    echo "             //                           "
+    echo "            /                             "
 }
 
 wait_for_tmux() {
@@ -203,7 +220,7 @@ auto_launch() {
 drone_input() {
     drone_temp="input"
     while true; do
-        echo "choose drone - cyclone, vulcan, tomathy"
+        echo "select drone - [c]yclone, [v]ulcan, [t]omathy"
         read -p "(default $DRONE): " drone_temp
         if [[ -z $drone_temp ]]; then
             break
@@ -212,14 +229,32 @@ drone_input() {
             DRONE=$drone_temp
             break
         fi
+        if [[ $drone_temp =~ ^[cvt]{1}$ ]]; then
+            if [[ $drone_temp =~ ^c$ ]]; then
+                DRONE="cyclone"
+                echo "  cyclone"
+                break
+            fi
+            if [[ $drone_temp =~ ^v$ ]]; then
+                DRONE="vulcan"
+                echo "  vulcan"
+                break
+            fi
+            if [[ $drone_temp =~ ^t$ ]]; then
+                DRONE="tomathy"
+                echo "  tomathy"
+                break
+            fi
+            break
+        fi
         echo -e $tred"invalid input"$rst
     done
 }
 
-ip_input() {
+gcs_input() {
     gcs_temp="input"
     while true; do
-        read -p "gcs_url (default $GCS): " gcs_temp
+        read -p "gcs_url (qgroundcontrol) (default $GCS): " gcs_temp
         if [[ -z $gcs_temp ]]; then
             break
         fi
@@ -229,10 +264,12 @@ ip_input() {
         fi
         echo -e $tred"invalid input"$rst
     done
+}
 
+gst_input() {
     gst_temp="input"
     while true; do
-        read -p "gst_url (default $GST): " gst_temp
+        read -p "gst_url (gstreamer) (default $GST): " gst_temp
         if [[ -z $gst_temp ]]; then
             break
         fi
@@ -242,6 +279,19 @@ ip_input() {
         fi
         echo -e $tred"invalid input"$rst
     done
+}
+
+ip_input() {
+    gcs_input
+    gst_input
+}
+
+confirm_inputs() {
+    echo "Final parameters:"
+    echo "  gcs_url: "$GCS
+    echo "  gst_url: "$GST
+    echo "  drone:   "$DRONE
+    read -p "Any key to launch scripts, Ctrl-c to quit"
 }
 
 auto_select() {
@@ -262,13 +312,18 @@ auto_select() {
 
     ip_input
     drone_input
+    confirm_inputs
 
     auto_launch $auto
 }
 
 interactive_mode() {
 
-    echo -e $tgrn"AEAC AUTO LAUNCHER"$rst
+    echo -e $tblu
+
+    print_logo
+
+    echo -e $rst
 
     # template
     # VARNAME="input"
@@ -291,7 +346,7 @@ interactive_mode() {
         fi
         if [[ $flightstack =~ ^2$ ]]; then
             echo -e $tgrn"MAVROS Launcher"$rst
-            ip_input
+            gcs_input
             mavros_launch &
             tmux
             exit 0
