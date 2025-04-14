@@ -6,7 +6,7 @@ ROS package for AEAC hardware integration
 
 Everything here handles integration with hardware. Creates ROS nodes that publish to a topic for consumption by the flight stack, or subscribe to a topic for forwarding to hardware. (potentially services as well)
 
-Ideally, hardware should slow down the stack as little as possible. Therefore I encourage the use of C++ since it offers efficiency, especially when running multiple processes at once on the Jetson Orin. 
+Ideally, hardware should slow down the stack as little as possible. Therefore I encourage the use of C++ since it offers efficiency, especially when running multiple processes at once on the Jetson Orin.
 
 ## Installation
 
@@ -18,3 +18,7 @@ Ideally, hardware should slow down the stack as little as possible. Therefore I 
 - gstreamer-ros-bridge: handles video streaming to ROS and the ground station.
 - antenna-tracker: integrates the antenna tracker for direct LOS communication.
 - ros-payload-retraction: handles the payload retraction mechanism with an onboard ESP32 & encoder. (TBD)
+
+## Launch scripts
+
+`./scripts` contains the `aeac` Bash script which launches neccessary scripts on the Jetson Orin, run `./install.sh` from `./scripts` to update/install script.
