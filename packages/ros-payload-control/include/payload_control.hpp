@@ -82,8 +82,8 @@ private:
     // force sensor //
     void ForceSensorSetup();
     void ForceRead();
-    int force1AnalogPin_ = 13;
-    int force2AnalogPin_ = 32;
+    int force1AnalogPin_ = 15;
+    int force2AnalogPin_ = 4;
 
     float filteredForce_{0};
     float force1_{0}; 
@@ -95,8 +95,8 @@ private:
     
     // water level //
 
-    float rawWeight_{0};
-    float weight_{0};
+    double rawWeight_{0};
+    double weight_{0};
     float lastWeight_{0};
     const int LOADCELL_DOUT_PIN = 18;
     const int LOADCELL_SCK_PIN = 5;
@@ -175,7 +175,7 @@ private:
     float waitTimerStart_{0};
     float stateSwitchStart_{0};
     // ros parameters for easy tuning
-    float pickupLen_{2.25};
+    float pickupLen_{2.0};
     float pickupTime_{30};
     float dispenseLen_{0.025};
     float dispenseTime_{15};

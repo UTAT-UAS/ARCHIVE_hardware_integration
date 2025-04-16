@@ -70,6 +70,7 @@ void PayloadControl::Stop()
     HookControlLoop(1);
     SwitchState(State::IDLE);
     operationDone_ = true;
+    stopDrop_ = false;
 }
 
 void PayloadControl::Pickup()
@@ -133,7 +134,7 @@ void PayloadControl::Pickup()
                 waitTimerStart_ = millis();
             }
             else {
-                VelocityControlLoop(-0.02);  // slowly retract
+                VelocityControlLoop(-0.03);  // slowly retract
 
                 if (millis() - waitTimerStart_ <= 2500) {
                     break;
