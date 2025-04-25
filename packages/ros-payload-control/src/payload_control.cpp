@@ -109,7 +109,7 @@ void PayloadControl::Pickup()
                 }
             }
             if (stopDrop_) {
-                if (millis() - waitTimerStart_ <= 500) { // wait for 500 ms for some slack
+                if (millis() - waitTimerStart_ <= 800) { // wait for 500 ms for some slack
                     break;
                 }
                 stoppedEncoderLen_ = encoderLen_;
@@ -222,7 +222,7 @@ void PayloadControl::Reset()
     {
     case State::IDLE:
         hookServo_.writeMicroseconds(1100);
-        VelocityControlLoop(-0.05);  // slowly retract
+        VelocityControlLoop(-0.08);  // slowly retract
         waitTimerStart_ = millis();
         SwitchState(State::RESPOOL);
         break;

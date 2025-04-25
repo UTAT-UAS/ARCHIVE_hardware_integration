@@ -103,7 +103,7 @@ private:
     int loadCellOffset_{0};
     bool loadCellIsTweaking_{false};
     int32_t loadCellTweakCount_{0}; 
-    float weightAlpha_{0.1};
+    float weightAlpha_{0.12};
     NBHX711 loadcell_;
 
     void LoadCellSetup();
@@ -132,7 +132,7 @@ private:
     float intClampPos{0.003};
     float alphaPos_{0.1};
     float alphaPosTau_{0.1};
-    float maxSpd_{0.1};  // 10 cm/s at max speed
+    float maxSpd_{0.1}; 
     float velOutput_{0}; // velocity
 
     // pi velocity controller
