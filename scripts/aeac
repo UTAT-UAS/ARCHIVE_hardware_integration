@@ -317,6 +317,27 @@ auto_select() {
     auto_launch $auto
 }
 
+computer_config() {
+    comp="input"
+    while true; do
+        echo "Configure .bashrc"
+        echo "[t]ailnet mode (cellular data link)"
+        echo "[a]ntenna mode"
+        read -p "> " comp
+        if [[ $comp =~ ^[r]{1}$ ]]; then
+            # TODO
+            break
+        fi
+        if [[ $comp =~ ^[w]{1}$ ]]; then
+            # TODO
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    exit 0
+}
+
 interactive_mode() {
 
     echo -e $tblu
@@ -339,6 +360,7 @@ interactive_mode() {
     echo -e "Full custom launch: WIP $tblu[1]$rst"
     echo -e "Launch MAVROS (GCS):    $tblu[2]$rst"
     echo -e "Select auto launcher:   $tblu[3]$rst"
+    echo -e "Computer Configuration: $tblu[4]$rst"
     while true; do
         read -p "> " flightstack
         if [[ $flightstack =~ ^1$ ]]; then
@@ -353,6 +375,9 @@ interactive_mode() {
         fi
         if [[ $flightstack =~ ^3$ ]]; then
             auto_select
+        fi
+        if [[ $flightstack =~ ^4$ ]]; then
+            computer_config
         fi
         echo -e $tred"invalid input"$rst
     done
