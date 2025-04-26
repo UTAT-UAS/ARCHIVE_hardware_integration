@@ -78,7 +78,7 @@ gcs_launch() {
     tmux send-keys -t "0:2" "cd $HOME/dev-environment/drone-visualization/frontend && npm run dev"
     tmux send-keys -t "0:2" "ENTER"
     print_ready
-    print_message Webviewer being served at: http://localhost:5173
+    print_message "Webviewer being served at: http://localhost:5173"
 }
 
 auto_launch() {
