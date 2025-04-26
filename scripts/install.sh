@@ -60,7 +60,7 @@ if [[ -f $script_name ]]; then
     read -p "Do you want to update the script $script_name? (y/n): " response
 
     if [[ "$response" == "y" || "$response" == "Y" ]]; then
-        cp ./aeac $HOME/bin
+        cp ./$script $HOME/bin
         create_bashrc
         echo "Script and .bashrc updated."
         echo "Ensure $HOME/bin is in your path e.g. \"export PATH=\$PATH:~/bin\""
@@ -72,7 +72,7 @@ if [[ -f $script_name ]]; then
         exit 1
     fi
 else
-    cp ./aeac $HOME/bin
+    cp ./$script $HOME/bin
     create_bashrc
     echo "Script installed and .bashrc updated."
     echo "Add $HOME/bin to your path e.g. \"export PATH=\$PATH:~/bin\" in your .bashrc"
