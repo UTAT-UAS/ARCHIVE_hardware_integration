@@ -324,12 +324,23 @@ computer_config() {
         echo "[t]ailnet mode (cellular data link)"
         echo "[a]ntenna mode"
         read -p "> " comp
-        if [[ $comp =~ ^[r]{1}$ ]]; then
-            # TODO
+        # TODO: this only works with the two modes lol
+        if [[ $comp =~ ^[t]{1}$ ]]; then
+            if grep -q "#==aeac mode antenna" $HOME/.bashrc; then
+                sed -i '/#==aeac mode antenna/c\#==aeac mode tailnet' $HOME/.bashrc
+                sed -i '/#==aeac-antenna/s/^/# /' $HOME/.bashrc
+            else
+                echo "already in tailnet mode"
+            fi
             break
         fi
-        if [[ $comp =~ ^[w]{1}$ ]]; then
-            # TODO
+        if [[ $comp =~ ^[a]{1}$ ]]; then
+            if grep -q "#==aeac mode tailnet" $HOME/.bashrc; then
+                sed -i '/#==aeac mode tailnet/c\#==aeac mode antenna' $HOME/.bashrc
+                sed -i '/#==aeac-antenna/s/^..//' $HOME/.bashrc
+            else
+                echo "already in antenna mode"
+            fi
             break
         fi
         echo -e $tred"invalid input"$rst

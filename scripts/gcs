@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+
+# Color escape codes
+tblk='\e[0;30m' # Black - Regular
+tred='\e[0;31m' # Red
+tgrn='\e[0;32m' # Green
+tylw='\e[0;33m' # Yellow
+tblu='\e[0;34m' # Blue
+tpur='\e[0;35m' # Purple
+tcyn='\e[0;36m' # Cyan
+twht='\e[0;37m' # White
+rst='\e[0m'     # Text Reset
+
+print_help() {
+    echo -e $tcyn"AEAC GCS AUTO LAUNCHER"$rst
+    echo ""
+    echo "Helper script to create a tmux session and run required setup scripts."
+    echo ""
+    echo "ARGS:"
+    echo "-a AUTO       Auto launch using a preset mode WIP"
+    echo "-i            Interactive mode"
+    echo "-h            This message"
+    exit 0
+}
+
+print_logo() {
+    echo "                               /          "
+    echo "                              //          "
+    echo "                            .//           "
+    echo "   ************************/  |***********"
+    echo "     __    __  _______   / _  |  _______  "
+    echo "    / /   / / /_. .__/  / / | | /_. .__/  "
+    echo "   | |    | |   | |   / /_/\| '   | |     "
+    echo "   ' \___/ '   | |   / /    ||   | |      "
+    echo "    \_____/    '_' /./      .|   '_'      "
+    echo "******************//********||*********   "
+    echo "                 //         |/            "
+    echo "               //                         "
+    echo "             //                           "
+    echo "            /                             "
+}
+
+wait_for_tmux() {
+    while true; do
+        TMUXSESSIONS=$(tmux list-sessions 2>&1)
+        if [[ ! $TMUXSESSIONS =~ ^no ]]; then
+            sleep 0.1
+            break
+        fi
+        sleep 0.1
+    done
+}
+
+print_message() {
+    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;34m$1\e[0m\""
+    tmux send-keys -t "0:flight-stack" "ENTER"
+}
+
+print_ready() {
+    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;32mALL SCRIPTS STARTED\e[0m\""
+    tmux send-keys -t "0:flight-stack" "ENTER"
+}
+
+gcs_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux new-window
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flask
+    tmux rename-window -t "0:2" frontend
+    tmux rename-window -t "0:3" flight-stack
+
+    tmux send-keys -t "0:0" "roslaunch simulation_testing gcs.launch"
+    tmux send-keys -t "0:0" "ENTER"
+    tmux send-keys -t "0:1" "roscd computer_vision && cd flask_server && flask run --port=5001"
+    tmux send-keys -t "0:1" "ENTER"
+    tmux send-keys -t "0:2" "cd $HOME/dev-environment/drone-visualization/frontend && npm run dev"
+    tmux send-keys -t "0:2" "ENTER"
+    print_ready
+}
+
+auto_launch() {
+    case ${1} in
+    g)
+        gcs_launch &
+        tmux
+        exit 0
+        ;;
+    esac
+    echo -e $tred"Auto launch option \"${1}\" not found"$rst
+}
+
+auto_select() {
+    auto="input"
+    while true; do
+        echo "gcs [g]"
+        read -p "> " auto
+        if [[ $auto =~ ^[g]{1}$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    auto_launch $auto
+}
+
+computer_config() {
+    comp="input"
+    while true; do
+        echo "Configure .bashrc"
+        echo "[t]ailnet mode (cellular data link)"
+        echo "[a]ntenna mode"
+        read -p "> " comp
+        # TODO: this only works with the two modes lol
+        if [[ $comp =~ ^[t]{1}$ ]]; then
+            if grep -q "#==aeac mode antenna" $HOME/.bashrc; then
+                sed -i '/#==aeac mode antenna/c\#==aeac mode tailnet' $HOME/.bashrc
+                sed -i '/#==aeac-antenna/s/^/# /' $HOME/.bashrc
+            else
+                echo "already in tailnet mode"
+            fi
+            break
+        fi
+        if [[ $comp =~ ^[a]{1}$ ]]; then
+            if grep -q "#==aeac mode tailnet" $HOME/.bashrc; then
+                sed -i '/#==aeac mode tailnet/c\#==aeac mode antenna' $HOME/.bashrc
+                sed -i '/#==aeac-antenna/s/^..//' $HOME/.bashrc
+            else
+                echo "already in antenna mode"
+            fi
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    exit 0
+}
+
+interactive_mode() {
+
+    echo -e $tblu
+
+    print_logo
+
+    echo -e $rst
+
+    flightstack="input"
+    echo -e "Select auto launcher:   $tblu[1]$rst"
+    echo -e "Computer Configuration: $tblu[2]$rst"
+    while true; do
+        read -p "> " flightstack
+        if [[ $flightstack =~ ^1$ ]]; then
+            auto_select
+        fi
+        if [[ $flightstack =~ ^2$ ]]; then
+            computer_config
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+}
+
+if [[ ! -z $TMUX ]]; then
+    echo -e $tred"Running inside a tmux session forbidden"$rst
+    exit 1
+fi
+
+TMUXSESSIONS=$(tmux list-sessions 2>&1)
+if [[ ! $TMUXSESSIONS =~ ^no && ! $TMUXSESSIONS =~ ^error ]]; then
+    echo -e $tred"Running script with existing tmux sessions not supported"$rst
+    exit 1
+fi
+
+if [ "$#" -eq 0 ]; then
+    print_help
+    exit 0
+fi
+
+# TODO parser for params like --gst instead of having to use auto selector
+# probably switch to getopt because we don't need cross platform
+
+while getopts a:hi opts; do
+    case ${opts} in
+    i) interactive_mode ;;
+    a) auto_launch $OPTARG ;;
+    h) print_help ;;
+    esac
+done
