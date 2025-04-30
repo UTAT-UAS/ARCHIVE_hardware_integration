@@ -149,36 +149,62 @@ ir_launch() {
     tmux send-keys -t "0:2" "rosrun simulation_testing test_task1.py"
 }
 
+# bucket_launch() {
+#     wait_for_tmux
+#     tmux new-window
+#     tmux new-window
+#     tmux new-window
+#     tmux new-window
+#     tmux rename-window -t "0:0" luxonis
+#     tmux rename-window -t "0:1" roslaunch
+#     tmux rename-window -t "0:2" payload
+#     tmux rename-window -t "0:3" cv-model
+#     tmux rename-window -t "0:4" flight-stack
+#     sleep 1
+
+#     print_message "running luxonis bridge..."
+#     tmux send-keys -t "0:0" "OAK"
+#     tmux send-keys -t "0:0" "ENTER"
+#     sleep 5
+#     print_message "running roslaunch..."
+#     tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
+#     tmux send-keys -t "0:1" "ENTER"
+#     sleep 3
+#     print_message "running rosserial..."
+#     tmux send-keys -t "0:2" "rosrun rosserial_python serial_node.py _port:=/dev/payload_serial _baud:=115200"
+#     tmux send-keys -t "0:2" "ENTER"
+#     print_message "initializing cv model..."
+#     tmux send-keys -t "0:3" "rosrun computer_vision bucket_detector_p.py"
+#     tmux send-keys -t "0:3" "ENTER"
+#     sleep 3
+#     print_ready
+#     tmux send-keys -t "0:4" "rosrun simulation_testing test_"
+# }
+
 bucket_launch() {
     wait_for_tmux
     tmux new-window
     tmux new-window
     tmux new-window
-    tmux new-window
-    tmux rename-window -t "0:0" luxonis
-    tmux rename-window -t "0:1" roslaunch
-    tmux rename-window -t "0:2" payload
-    tmux rename-window -t "0:3" cv-model
-    tmux rename-window -t "0:4" flight-stack
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" payload
+    tmux rename-window -t "0:2" cv-model
+    tmux rename-window -t "0:3" flight-stack
     sleep 1
 
-    print_message "running luxonis bridge..."
-    tmux send-keys -t "0:0" "OAK"
-    tmux send-keys -t "0:0" "ENTER"
-    sleep 5
     print_message "running roslaunch..."
-    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
-    tmux send-keys -t "0:1" "ENTER"
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
+    tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_message "running rosserial..."
-    tmux send-keys -t "0:2" "rosrun rosserial_python serial_node.py _port:=/dev/payload_serial _baud:=115200"
-    tmux send-keys -t "0:2" "ENTER"
+    tmux send-keys -t "0:1" "rosrun rosserial_python serial_node.py _port:=/dev/payload_serial _baud:=115200"
+    tmux send-keys -t "0:1" "ENTER"
     print_message "initializing cv model..."
-    tmux send-keys -t "0:3" "rosrun computer_vision bucket_detector_p.py"
-    tmux send-keys -t "0:3" "ENTER"
+    tmux send-keys -t "0:2" "rosrun computer_vision bucket_detector_p.py"
+    tmux send-keys -t "0:2" "ENTER"
     sleep 3
     print_ready
-    tmux send-keys -t "0:4" "rosrun simulation_testing test_"
+    tmux send-keys -t "0:3" "rosrun simulation_testing test_"
 }
 
 auto_launch() {
