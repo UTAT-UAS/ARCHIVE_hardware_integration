@@ -228,9 +228,9 @@ setup_webcam() {
         exit 1
     fi
 
-    exposure="input"
+    exposure="3"
     while true; do
-        read -p "" exposure
+        read -p "webcam exposure (default $exposure): " exposure
         if [[ $exposure =~ ^[0-9]+$ ]]; then
             break
         fi
