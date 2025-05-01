@@ -94,22 +94,36 @@ normal_launch() {
     print_ready
 }
 
+# camera_launch() {
+#     wait_for_tmux
+#     tmux new-window
+#     tmux new-window
+#     tmux rename-window -t "0:0" luxonis
+#     tmux rename-window -t "0:1" roslaunch
+#     tmux rename-window -t "0:2" flight-stack
+#     sleep 1
+
+#     print_message "running luxonis bridge..."
+#     tmux send-keys -t "0:0" "OAK"
+#     tmux send-keys -t "0:0" "ENTER"
+#     sleep 5
+#     print_message "running roslaunch..."
+#     tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
+#     tmux send-keys -t "0:1" "ENTER"
+#     sleep 3
+#     print_ready
+# }
+
 camera_launch() {
     wait_for_tmux
     tmux new-window
-    tmux new-window
-    tmux rename-window -t "0:0" luxonis
-    tmux rename-window -t "0:1" roslaunch
-    tmux rename-window -t "0:2" flight-stack
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
     sleep 1
 
-    print_message "running luxonis bridge..."
-    tmux send-keys -t "0:0" "OAK"
-    tmux send-keys -t "0:0" "ENTER"
-    sleep 5
     print_message "running roslaunch..."
-    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
-    tmux send-keys -t "0:1" "ENTER"
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
+    tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_ready
 }
@@ -207,6 +221,27 @@ bucket_launch() {
     tmux send-keys -t "0:3" "rosrun simulation_testing test_"
 }
 
+setup_webcam() {
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 &>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e $tred"Unable to open webcam, quitting"$rst
+        exit 1
+    fi
+
+    exposure="input"
+    while true; do
+        read -p "" exposure
+        if [[ $exposure =~ ^[0-9]+$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto=1
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto_priority=0
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_absolute=$exposure
+}
+
 auto_launch() {
     case ${1} in
     m)
@@ -225,11 +260,13 @@ auto_launch() {
         exit 0
         ;;
     b)
+        setup_webcam
         bucket_launch &
         tmux
         exit 0
         ;;
     c)
+        setup_webcam
         camera_launch &
         tmux
         exit 0
