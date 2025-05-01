@@ -177,11 +177,14 @@ setup_webcam() {
         exit 1
     fi
 
-    current=$(v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -C exposure_absolute)
+    current="$(v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -C exposure_absolute)"
 
     exposure="3"
     while true; do
         read -p "webcam exposure (current $current) (default $exposure): " exposure
+        if [[ -z $exposure ]]; then
+            break
+        fi
         if [[ $exposure =~ ^[0-9]+$ ]]; then
             break
         fi
