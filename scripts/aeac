@@ -449,16 +449,19 @@ interactive_mode() {
     exit 0
 }
 
-if [[ ! -z $TMUX ]]; then
-    echo -e $tred"Running inside a tmux session forbidden"$rst
-    exit 1
-fi
+check_runtime() {
+    if [[ ! -z $TMUX ]]; then
+        echo -e $tred"Running inside a tmux session forbidden"$rst
+        exit 1
+    fi
 
-TMUXSESSIONS=$(tmux list-sessions 2>&1)
-if [[ ! $TMUXSESSIONS =~ ^no && ! $TMUXSESSIONS =~ ^error ]]; then
-    echo -e $tred"Running script with existing tmux sessions not supported"$rst
-    exit 1
-fi
+    TMUXSESSIONS=$(tmux list-sessions 2>&1)
+    if [[ ! $TMUXSESSIONS =~ ^no && ! $TMUXSESSIONS =~ ^error ]]; then
+        echo -e $tred"Running script with existing tmux sessions not supported"$rst
+        exit 1
+    fi
+
+}
 
 if [ "$#" -eq 0 ]; then
     print_help
@@ -470,8 +473,14 @@ fi
 
 while getopts a:hiu opts; do
     case ${opts} in
-    i) interactive_mode ;;
-    a) auto_launch $OPTARG ;;
+    i)
+        check_runtime
+        interactive_mode
+        ;;
+    a)
+        check_runtime
+        auto_launch $OPTARG
+        ;;
     u) utility_mode ;;
     h) print_help ;;
     esac
