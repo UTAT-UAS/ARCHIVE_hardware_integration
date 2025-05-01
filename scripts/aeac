@@ -25,8 +25,9 @@ print_help() {
     echo "run \"aeac -i\" for interactive mode"
     echo ""
     echo "ARGS:"
-    echo "-a AUTO       Auto launch using a preset mode WIP"
+    echo "-a AUTO       Auto launch using a preset mode (default parameters)"
     echo "-i            Interactive mode"
+    echo "-u            Utility script mode"
     echo "-h            This message"
     echo ""
     echo "AUTO:"
@@ -176,9 +177,11 @@ setup_webcam() {
         exit 1
     fi
 
+    current=$(v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -C exposure_absolute)
+
     exposure="3"
     while true; do
-        read -p "webcam exposure (default $exposure): " exposure
+        read -p "webcam exposure (current $current) (default $exposure): " exposure
         if [[ $exposure =~ ^[0-9]+$ ]]; then
             break
         fi
@@ -360,6 +363,43 @@ computer_config() {
     exit 0
 }
 
+power_choice() {
+    power_input="input"
+    echo -e "[s]hutdown, [r]eboot"
+    while true; do
+        read -p "> " power_input
+        if [[ $power_input =~ ^s$ ]]; then
+            sudo systemctl poweroff
+            break
+        fi
+        if [[ $power_input =~ ^r$ ]]; then
+            sudo systemctl reboot
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+}
+
+utility_mode() {
+    util_input="input"
+    echo -e "Power                  $tblu[1]$rst"
+    echo -e "Camera                 $tblu[2]$rst"
+    while true; do
+        read -p "> " util_input
+        if [[ $util_input =~ ^1$ ]]; then
+            power_choice
+            break
+        fi
+        if [[ $util_input =~ ^2$ ]]; then
+            setup_webcam
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    exit 0
+}
+
 interactive_mode() {
 
     echo -e $tblu
@@ -379,7 +419,7 @@ interactive_mode() {
     # done
 
     flightstack="input"
-    echo -e "Full custom launch: WIP $tblu[1]$rst"
+    echo -e "UNUSED                  $tblu[1]$rst"
     echo -e "Launch MAVROS (GCS):    $tblu[2]$rst"
     echo -e "Select auto launcher:   $tblu[3]$rst"
     echo -e "Computer Configuration: $tblu[4]$rst"
@@ -404,19 +444,8 @@ interactive_mode() {
         echo -e $tred"invalid input"$rst
     done
 
-    # TODO other input types
-    # move auto launcher parts to functions to allow interactive selector to choose what runs
+    # Perhaps a full custom launch configurator could go here, but my bash skills are not strong enough
 
-    camera="input"
-    while true; do
-        read -p "Luxonis [l], IR [i], None [n]: " camera
-        if [[ $camera =~ ^[lin]{1}$ ]]; then
-            break
-        fi
-        echo -e $tred"invalid input"$rst
-    done
-
-    echo $camera
     exit 0
 }
 
@@ -439,10 +468,11 @@ fi
 # TODO parser for params like --gst instead of having to use auto selector
 # probably switch to getopt because we don't need cross platform
 
-while getopts a:hi opts; do
+while getopts a:hiu opts; do
     case ${opts} in
     i) interactive_mode ;;
     a) auto_launch $OPTARG ;;
+    u) utility_mode ;;
     h) print_help ;;
     esac
 done
