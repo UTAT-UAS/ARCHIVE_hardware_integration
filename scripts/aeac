@@ -233,7 +233,7 @@ auto_launch() {
         exit 0
         ;;
     i)
-        setup_ircam &
+        setup_ircam
         ir_launch &
         tmux
         exit 0
@@ -251,7 +251,7 @@ auto_launch() {
         exit 0
         ;;
     r)
-        setup_ircam &
+        setup_ircam
         ir_camera_launch &
         tmux
         exit 0
