@@ -413,6 +413,7 @@ utility_mode() {
     util_input="input"
     echo -e "Power                  $tblu[1]$rst"
     echo -e "Camera                 $tblu[2]$rst"
+    echo -e "IR Camera              $tblu[3]$rst"
     while true; do
         read -p "> " util_input
         if [[ $util_input =~ ^1$ ]]; then
@@ -421,6 +422,10 @@ utility_mode() {
         fi
         if [[ $util_input =~ ^2$ ]]; then
             setup_webcam
+            break
+        fi
+        if [[ $util_input =~ ^3$ ]]; then
+            setup_ircam
             break
         fi
         echo -e $tred"invalid input"$rst
