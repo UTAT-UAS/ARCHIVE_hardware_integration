@@ -137,7 +137,7 @@ ir_launch() {
     tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_message "initializing cv model..."
-    tmux send-keys -t "0:1" "rosrun computer_vision ir_detector.py"
+    tmux send-keys -t "0:1" "rosrun computer_vision ir_classical_detector.py"
     tmux send-keys -t "0:1" "ENTER"
     sleep 3
     print_ready
@@ -177,6 +177,9 @@ setup_webcam() {
         exit 1
     fi
 
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto=1
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto_priority=0
+
     current="$(v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -C exposure_absolute)"
 
     exposure="3"
@@ -191,8 +194,6 @@ setup_webcam() {
         echo -e $tred"invalid input"$rst
     done
 
-    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto=1
-    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto_priority=0
     v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_absolute=$exposure
 }
 setup_ircam() {
@@ -201,6 +202,9 @@ setup_ircam() {
         echo -e $tred"Unable to open ircam, quitting"$rst
         exit 1
     fi
+
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_auto=1
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_auto_priority=0
 
     current="$(v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -C exposure_absolute)"
 
@@ -216,7 +220,6 @@ setup_ircam() {
         echo -e $tred"invalid input"$rst
     done
 
-    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_auto=1
     v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_absolute=$exposure
 }
 
@@ -233,7 +236,7 @@ auto_launch() {
         exit 0
         ;;
     i)
-        setup_ircam
+        # setup_ircam
         ir_launch &
         tmux
         exit 0
@@ -251,7 +254,7 @@ auto_launch() {
         exit 0
         ;;
     r)
-        setup_ircam
+        # setup_ircam
         ir_camera_launch &
         tmux
         exit 0
