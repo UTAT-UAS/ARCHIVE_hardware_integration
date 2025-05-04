@@ -195,6 +195,30 @@ setup_webcam() {
     v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto_priority=0
     v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_absolute=$exposure
 }
+setup_ircam() {
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 &>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e $tred"Unable to open ircam, quitting"$rst
+        exit 1
+    fi
+
+    current="$(v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -C exposure_absolute)"
+
+    exposure="250"
+    while true; do
+        read -p "webcam exposure (current $current) (default $exposure): " exposure
+        if [[ -z $exposure ]]; then
+            break
+        fi
+        if [[ $exposure =~ ^[0-9]+$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_auto=1
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_absolute=$exposure
+}
 
 auto_launch() {
     case ${1} in
@@ -209,6 +233,7 @@ auto_launch() {
         exit 0
         ;;
     i)
+        setup_ircam &
         ir_launch &
         tmux
         exit 0
@@ -226,6 +251,7 @@ auto_launch() {
         exit 0
         ;;
     r)
+        setup_ircam &
         ir_camera_launch &
         tmux
         exit 0
