@@ -208,7 +208,7 @@ setup_ircam() {
 
     current="$(v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -C exposure_absolute)"
 
-    exposure="250"
+    exposure="100"
     while true; do
         read -p "webcam exposure (current $current) (default $exposure): " exposure
         if [[ -z $exposure ]]; then
@@ -236,7 +236,7 @@ auto_launch() {
         exit 0
         ;;
     i)
-        # setup_ircam
+        setup_ircam
         ir_launch &
         tmux
         exit 0
@@ -254,7 +254,7 @@ auto_launch() {
         exit 0
         ;;
     r)
-        # setup_ircam
+        setup_ircam
         ir_camera_launch &
         tmux
         exit 0
