@@ -81,10 +81,27 @@ gcs_launch() {
     print_message "Webviewer being served at: http://localhost:5173"
 }
 
+old_gcs_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
+
+    tmux send-keys -t "0:0" "roslaunch simulation_testing gcs.launch"
+    tmux send-keys -t "0:0" "ENTER"
+    print_ready
+    print_message "Webviewer being served at: http://localhost:5000"
+}
+
 auto_launch() {
     case ${1} in
     g)
         gcs_launch &
+        tmux
+        exit 0
+        ;;
+    o)
+        old_gcs_launch &
         tmux
         exit 0
         ;;
@@ -95,9 +112,10 @@ auto_launch() {
 auto_select() {
     auto="input"
     while true; do
-        echo "gcs [g]"
+        echo "gcs     [g]"
+        echo "old gcs [o]"
         read -p "> " auto
-        if [[ $auto =~ ^[g]{1}$ ]]; then
+        if [[ $auto =~ ^[og]{1}$ ]]; then
             break
         fi
         echo -e $tred"invalid input"$rst
