@@ -182,13 +182,15 @@ setup_webcam() {
 
     current="$(v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -C exposure_absolute)"
 
-    exposure="3"
+    exposure=3
+    exposure_temp="input"
     while true; do
-        read -p "webcam exposure (current $current) (default $exposure): " exposure
-        if [[ -z $exposure ]]; then
+        read -p "webcam exposure_temp (current $current) (default $exposure): " exposure_temp
+        if [[ -z $exposure_temp ]]; then
             break
         fi
-        if [[ $exposure =~ ^[0-9]+$ ]]; then
+        if [[ $exposure_temp =~ ^[0-9]+$ ]]; then
+            exposure=$exposure_temp
             break
         fi
         echo -e $tred"invalid input"$rst
@@ -208,13 +210,15 @@ setup_ircam() {
 
     current="$(v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -C exposure_absolute)"
 
-    exposure="100"
+    exposure=100
+    exposure_temp="input"
     while true; do
-        read -p "webcam exposure (current $current) (default $exposure): " exposure
-        if [[ -z $exposure ]]; then
+        read -p "webcam exposure_temp (current $current) (default $exposure_temp): " exposure_temp
+        if [[ -z $exposure_temp ]]; then
             break
         fi
-        if [[ $exposure =~ ^[0-9]+$ ]]; then
+        if [[ $exposure_temp =~ ^[0-9]+$ ]]; then
+            exposure=$exposure_temp
             break
         fi
         echo -e $tred"invalid input"$rst
