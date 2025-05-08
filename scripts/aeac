@@ -4,6 +4,7 @@
 GCS="100.64.0.1"
 GST="100.64.0.5"
 DRONE="cyclone"
+LOCATION="utias"
 
 # Color escape codes
 tblk='\e[0;30m' # Black - Regular
@@ -127,21 +128,31 @@ ir_launch() {
     wait_for_tmux
     tmux new-window
     tmux new-window
+    tmux new-window
+    tmux new-window
     tmux rename-window -t "0:0" roslaunch
     tmux rename-window -t "0:1" cv-model
-    tmux rename-window -t "0:2" flight-stack
+    tmux rename-window -t "0:2" source-server
+    tmux rename-window -t "0:3" source-sender
+    tmux rename-window -t "0:4" flight-stack
     sleep 1
 
     print_message "running roslaunch..."
-    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml"
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml" location_file:="$LOCATION".yaml
     tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_message "initializing cv model..."
     tmux send-keys -t "0:1" "rosrun computer_vision ir_classical_detector.py"
     tmux send-keys -t "0:1" "ENTER"
     sleep 3
+    print_message "initializing source server..."
+    tmux send-keys -t "0:2" "rosrun waypoint_navigator run_source_server.py"
+    tmux send-keys -t "0:2" "ENTER"
+    print_message "initializing source setter..."
+    tmux send-keys -t "0:3" "rosrun waypoint_navigator source_sender.py"
+    tmux send-keys -t "0:3" "ENTER"
     print_ready
-    tmux send-keys -t "0:2" "rosrun simulation_testing test_task1.py"
+    tmux send-keys -t "0:4" "rosrun simulation_testing comp_task1.py --param_start"
 }
 
 bucket_launch() {
@@ -336,6 +347,40 @@ ip_input() {
     gst_input
 }
 
+location_input() {
+    location_temp="input"
+    while true; do
+        echo "select location - [u]tias, [k]offler, [a]lberta"
+        read -p "(default $LOCATION): " location_temp
+        if [[ -z $location_temp ]]; then
+            break
+        fi
+        if [[ $location_temp =~ ^(utias|koffler|alberta)$ ]]; then
+            LOCATION=$location_temp
+            break
+        fi
+        if [[ $location_temp =~ ^[uka]{1}$ ]]; then
+            if [[ $location_temp =~ ^u$ ]]; then
+                LOCATION="utias"
+                echo "  utias"
+                break
+            fi
+            if [[ $location_temp =~ ^k$ ]]; then
+                LOCATION="koffler"
+                echo "  koffler"
+                break
+            fi
+            if [[ $location_temp =~ ^a$ ]]; then
+                LOCATION="alberta"
+                echo "  alberta"
+                break
+            fi
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+}
+
 confirm_inputs() {
     echo "Final parameters:"
     echo "  gcs_url: "$GCS
@@ -360,6 +405,7 @@ auto_select() {
         echo -e $tred"invalid input"$rst
     done
 
+    location_input
     ip_input
     drone_input
     confirm_inputs
