@@ -11,7 +11,6 @@
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/PointStamped.h>
 #include <Wire.h>
-#include <VL6180X.h>
 #include <NBHX711.h>
 #include <position_controller.hpp>
 #include <velocity_controller.hpp>
@@ -91,19 +90,21 @@ private:
     float rawForce1_{0};
     float rawForce2_{0};
     float alphaForce_{0.2};  // smoothing factor
-    float forceThreshold_{20.0};
+    float forceThreshold_{10.0};
     
     // water level //
 
     double rawWeight_{0};
     double weight_{0};
     float lastWeight_{0};
+    float lastLastWeight_{0};
+    float weightThreshold{100};
     const int LOADCELL_DOUT_PIN = 18;
     const int LOADCELL_SCK_PIN = 5;
     int loadCellOffset_{0};
     bool loadCellIsTweaking_{false};
     int32_t loadCellTweakCount_{0}; 
-    float weightAlpha_{0.12};
+    float weightAlpha_{0.8};
     NBHX711 loadcell_;
 
     void LoadCellSetup();
@@ -127,20 +128,21 @@ private:
     float dt_{0.033};  // 30 Hz
 
     // pi position controller
-    float kpPos_{0.95};  // 25
+    float kpPos_{0.65};  // 25  
     float kiPos_{0}; //18
-    float intClampPos{0.003};
+    float kdPos_{0};
+    float intClampPos{0.02};
     float alphaPos_{0.1};
     float alphaPosTau_{0.1};
-    float maxSpd_{0.1}; 
+    float maxSpd_{0.15}; 
     float velOutput_{0}; // velocity
 
     // pi velocity controller
-    float kpVel_{4000};
-    float kiVel_{150};
-    float intClampVel_{500};
+    float kpVel_{500};
+    float kiVel_{50};
+    float intClampVel_{400};
     float maxServoUsDelta_{500};
-    float alphaVel_{0.1};
+    float alphaVel_{0.1};   
     float alphaVelTau_{0.1};
     float servoOutput_{0}; 
 
@@ -154,7 +156,8 @@ private:
         PICKUP,
         DISPENSE,
         RESET,
-        MANUAL
+        MANUAL,
+        RESET_PICKUP
     };
     enum class State {
         IDLE,
@@ -163,22 +166,26 @@ private:
         RESPOOL
     };
     void SwitchState(State state);
+    void StopRetraction();
     void Stop();
     void Pickup();
+    void ResetPickup();
     void Dispense();
     void Reset();
     void Manual();
 
+    // states
     OPCODE operation_{OPCODE::STOPPED};
     State state_{State::IDLE};
     bool operationDone_{false};
+    bool pickupReset_{false};
     float waitTimerStart_{0};
     float stateSwitchStart_{0};
     // ros parameters for easy tuning
     float pickupLen_{2.0};
     float pickupTime_{30};
-    float dispenseLen_{0.025};
-    float dispenseTime_{15};
+    float dispenseLen_{0.03};
+    float dispenseTime_{12};
 
     // other //
     static PayloadControl* instance_;

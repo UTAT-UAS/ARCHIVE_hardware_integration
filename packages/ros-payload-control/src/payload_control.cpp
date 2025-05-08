@@ -11,7 +11,7 @@ PayloadControl::PayloadControl()
  servoVelocityPub_("/pld/servo_vel", &servoVelMsg_),
  loadcell_(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN),
  posPID_(dt_, maxSpd_, -maxSpd_, kpPos_, kiPos_, 0, intClampPos, alphaPos_, alphaPosTau_),
- velPID_(dt_, maxServoUsDelta_, -maxServoUsDelta_, kpVel_, kiVel_, 0, intClampVel_, alphaVel_, alphaVelTau_, -1)
+ velPID_(dt_, maxServoUsDelta_, -maxServoUsDelta_, kpVel_, kiVel_, 0, intClampVel_, alphaVel_, alphaVelTau_, 1)
 {
     instance_ = this;
 }
@@ -41,7 +41,7 @@ void PayloadControl::ReadSensors()
 
 void PayloadControl::HookControlLoop(float hookSetpoint)
 {
-    hookServo_.writeMicroseconds(map(hookSetpoint, 0, 1, 1025, 1875));
+    hookServo_.writeMicroseconds(map(hookSetpoint*10, 10, 0, 1025, 1875));
 }
 
 void PayloadControl::PositionControlLoop(float lenSetpoint)
@@ -64,6 +64,14 @@ void PayloadControl::SwitchState(State state)
     state_ = state;
 }
 
+void PayloadControl::StopRetraction()
+{
+    encoderRawISR_ = 0;
+    encoderLen_ = 0;
+    stoppedEncoderLen_ = 0;
+    operation_ = OPCODE::STOPPED;
+}
+
 void PayloadControl::Stop()
 {
     PositionControlLoop(stoppedEncoderLen_);
@@ -71,6 +79,7 @@ void PayloadControl::Stop()
     SwitchState(State::IDLE);
     operationDone_ = true;
     stopDrop_ = false;
+    pickupReset_ = false;
 }
 
 void PayloadControl::Pickup()
@@ -82,7 +91,7 @@ void PayloadControl::Pickup()
 
             contServoWrite(1500);
             PositionControlLoop(encoderLen_);
-            HookControlLoop(0);
+            HookControlLoop(0.6);
             SwitchState(State::UNSPOOL);    
             stateSwitchStart_ = millis();
             break;
@@ -97,19 +106,21 @@ void PayloadControl::Pickup()
                 break;
             }
             PositionControlLoop(pickupLen_);
-            HookControlLoop(0);
-            if (millis() - waitTimerStart_ >= 1500) {
+            HookControlLoop(0.6);
+            if (millis() - waitTimerStart_ >= 1000) {  // check load with timeout to prevent drift 
+                lastLastWeight_ = lastWeight_;
+                lastLastWeight_ = lastWeight_;
                 lastWeight_ = weight_;
                 waitTimerStart_ = millis();
             }
-            if (abs(pickupLen_ - encoderLen_) < 0.1 || lastWeight_ - weight_ > 100) {
+            if (abs(pickupLen_ - encoderLen_) < 0.1 || (lastWeight_ - weight_) > weightThreshold || lastLastWeight_ - weight_ > weightThreshold) {
                 if (stopDrop_ == false) {
                     stopDrop_ = true;
                     waitTimerStart_ = millis();
                 }
             }
             if (stopDrop_) {
-                if (millis() - waitTimerStart_ <= 800) { // wait for 500 ms for some slack
+                if (millis() - waitTimerStart_ <= 350) { // wait for 500 ms for some slack
                     break;
                 }
                 stoppedEncoderLen_ = encoderLen_;
@@ -119,7 +130,7 @@ void PayloadControl::Pickup()
 
         case State::WAIT:
             PositionControlLoop(stoppedEncoderLen_);
-            HookControlLoop(0);
+            HookControlLoop(0.6);
             if (millis() - waitTimerStart_ >= pickupTime_ * 1000) {
                 stopDrop_ = false;
                 SwitchState(State::RESPOOL);
@@ -127,30 +138,37 @@ void PayloadControl::Pickup()
             break;
 
         case State::RESPOOL:
-
             if (encoderLen_ > 0.15) {
+                stopDrop_ = false;
                 PositionControlLoop(0.10);  // go back to 0 height with encoder fb
-                HookControlLoop(0);
+                HookControlLoop(0.6);
                 waitTimerStart_ = millis();
             }
             else {
-                VelocityControlLoop(-0.03);  // slowly retract
+                VelocityControlLoop(-0.04);  // slowly retract
 
                 if (millis() - waitTimerStart_ <= 2500) {
                     break;
                 }
 
                 // if force or encoder has not changed for a certain time then stop
-                if (force1_ >= forceThreshold_ && force2_ >= forceThreshold_ || (millis() - lastEncoderChangeTime_) > 700) { 
-                    encoderRawISR_ = 0;
-                    encoderLen_ = 0;
-                    stoppedEncoderLen_ = 0;
-                    operation_ = OPCODE::STOPPED;
+                if (force1_ >= forceThreshold_ && force2_ >= forceThreshold_ || (millis() - lastEncoderChangeTime_) > 1000) { 
+                    StopRetraction();
                 }
             } 
             break;
     }
     return;
+}
+
+void PayloadControl::ResetPickup()
+{
+    if (pickupReset_ == true) {
+        return;
+    }
+    pickupReset_ = true;
+    operation_ = OPCODE::PICKUP;
+    SwitchState(State::RESPOOL);
 }
 
 void PayloadControl::Dispense()
@@ -164,6 +182,8 @@ void PayloadControl::Dispense()
             HookControlLoop(1);
             SwitchState(State::UNSPOOL);    
             waitTimerStart_ = millis();
+            //reset integral term in velocity controller
+            velPID_.velZ_.reset();            
             break;
         case State::UNSPOOL:
             // wait for hook dynamics
@@ -187,11 +207,11 @@ void PayloadControl::Dispense()
             // if (loadCellIsTweaking_) {
             if (millis() - waitTimerStart_ >= dispenseTime_ * 1000) {
                 SwitchState(State::RESPOOL);
-                contServoWrite(MOVEMENT_UP_THRESH + 100);  // slowly retract
+                contServoWrite(MOVEMENT_DOWN_THRESH - 100);  // slowly retract
                 waitTimerStart_ = millis();
             }
             // }
-            // if (lastWeight_ - weight_ > 400) {
+            // if (lastWeight_ - weight_ > 300) {
             //     SwitchState(State::RESPOOL);
             //     contServoWrite(MOVEMENT_UP_THRESH + 100);  // slowly retract
             // }
@@ -203,12 +223,9 @@ void PayloadControl::Dispense()
                 break;
             }
 
-            contServoWrite(MOVEMENT_UP_THRESH + 150);  // slowly retract upwards
-            if (force1_ >= forceThreshold_ && force2_ >= forceThreshold_ || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
-                encoderRawISR_ = 0;
-                encoderLen_ = 0;
-                stoppedEncoderLen_ = 0;
-                operation_ = OPCODE::STOPPED;
+            contServoWrite(MOVEMENT_DOWN_THRESH - 150);  // slowly retract upwards
+            if (force1_ >= forceThreshold_+5 && force2_ >= forceThreshold_+5 || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
+                StopRetraction();
             }
             break;
     }
@@ -221,25 +238,23 @@ void PayloadControl::Reset()
     switch (state_)
     {
     case State::IDLE:
-        hookServo_.writeMicroseconds(1100);
-        VelocityControlLoop(-0.08);  // slowly retract
+        HookControlLoop(0.6);
+        VelocityControlLoop(-0.07);  // slowly retract
         waitTimerStart_ = millis();
         SwitchState(State::RESPOOL);
         break;
     case State::RESPOOL:
         // wait for dynamics
-        VelocityControlLoop(-0.05); 
+        VelocityControlLoop(-0.07); 
         if (millis() - waitTimerStart_ <= 1000) {
             break;
         }
         // state transition condition
         if (force1_ >= forceThreshold_ && force2_ >= forceThreshold_ || (millis() - lastEncoderChangeTime_) > 500) { // if force is detected, stop
-            encoderRawISR_ = 0;
-            encoderLen_ = 0;
-            stoppedEncoderLen_ = 0;
-            operation_ = OPCODE::STOPPED;
+           StopRetraction();
         }
     default:
+        SwitchState(State::IDLE);
         break;
     }
     return;
@@ -248,7 +263,7 @@ void PayloadControl::Reset()
 void PayloadControl::Manual()
 {
     operationDone_ = false;
-    HookControlLoop(0);
+    HookControlLoop(0.6);
     PositionControlLoop(manualServoSetpoint_);
     //VelocityControlLoop(manualServoSetpoint_);
     //contServoWrite(MOVEMENT_DOWN_THRESH);
@@ -278,6 +293,9 @@ void PayloadControl::UpdatePayload()
             break;
         case OPCODE::MANUAL:
             Manual();
+            break;
+        case OPCODE::RESET_PICKUP:
+            ResetPickup();
             break;
         default:
             break;

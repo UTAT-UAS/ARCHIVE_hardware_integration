@@ -26,7 +26,7 @@ void PayloadControl::PublishSensorsFb()
     forceMsg_.point.y = force2_;
     weightMsg_.data = weight_;
     //weightMsg_.data = velPID_.velZ_.integral_ * kiVel_;
-    servoVelMsg_.data = velOutput_;
+    servoVelMsg_.data = servoOutput_;
 
     encoderLenPub_.publish(&encoderLenFbMsg_);
     encoderVelPub_.publish(&encoderVelMsg_);
