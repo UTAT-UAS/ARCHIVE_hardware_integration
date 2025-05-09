@@ -100,7 +100,7 @@ void PayloadControl::Pickup()
 
             // if the encoder has reached the desired length with tolerances
             // wait for hook dynamics
-            if (millis() - stateSwitchStart_ <= 1000) {
+            if (millis() - stateSwitchStart_ <= 500) {
                 lastWeight_ = weight_;
                 waitTimerStart_ = millis();
                 break;
@@ -174,6 +174,7 @@ void PayloadControl::ResetPickup()
 void PayloadControl::Dispense()
 {
     operationDone_ = false;
+    dispenseStarted = true;
     switch (state_)
     {
         case State::IDLE:
@@ -187,31 +188,37 @@ void PayloadControl::Dispense()
             break;
         case State::UNSPOOL:
             // wait for hook dynamics
-            if (millis() - waitTimerStart_ <= 1000) {
+            if (millis() - waitTimerStart_ <= 500) {
                 lastWeight_ = weight_;
                 break;
             }
             PositionControlLoop(dispenseLen_);
             HookControlLoop(1);
-            if (abs(dispenseLen_ - encoderLen_) < 0.005) {
+            if (abs(dispenseLen_ - encoderLen_) < 0.01) {
                 waitTimerStart_ = millis();
-                SwitchState(State::WAIT);
-                
+                SwitchState(State::WAIT);   
             }
             break;
         case State::WAIT:
             PositionControlLoop(dispenseLen_);
             HookControlLoop(1);
+
+            if (numBuckets_ > 1) {
+                // divide total amount by num of buckets to know how much to dispense this time
+                dispenseAmount_ = lastWeight_ / numBuckets_; // 1.8 -> .9 for 2 buckets
+            } else {
+                
+            }
             // logic here to check water levels
             // if (current water amount - last water amount > 600) {
             // if (loadCellIsTweaking_) {
-            if (millis() - waitTimerStart_ >= dispenseTime_ * 1000) {
+            if (millis() - waitTimerStart_ >= dispenseTime_ * 1000 || abs(lastWeight_ - weight_) > dispenseAmount_-150) {
                 SwitchState(State::RESPOOL);
                 contServoWrite(MOVEMENT_DOWN_THRESH - 100);  // slowly retract
                 waitTimerStart_ = millis();
             }
             // }
-            // if (lastWeight_ - weight_ > 300) {
+            // if (lastWeight_ - weight_ > 300 || millis() - waitTimerStart >= 1000) {
             //     SwitchState(State::RESPOOL);
             //     contServoWrite(MOVEMENT_UP_THRESH + 100);  // slowly retract
             // }
@@ -297,6 +304,9 @@ void PayloadControl::UpdatePayload()
         case OPCODE::RESET_PICKUP:
             ResetPickup();
             break;
+        case OPCODE::DISPENSE_HALF:
+            numBuckets_ = dispenseStarted ? numBuckets_ : 2;
+            Dispense();
         default:
             break;
     }

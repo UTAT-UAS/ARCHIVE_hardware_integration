@@ -157,7 +157,8 @@ private:
         DISPENSE,
         RESET,
         MANUAL,
-        RESET_PICKUP
+        RESET_PICKUP,
+        DISPENSE_HALF
     };
     enum class State {
         IDLE,
@@ -186,6 +187,7 @@ private:
     float pickupTime_{30};
     float dispenseLen_{0.03};
     float dispenseTime_{12};
+    int numBuckets_{1};
 
     // other //
     static PayloadControl* instance_;
