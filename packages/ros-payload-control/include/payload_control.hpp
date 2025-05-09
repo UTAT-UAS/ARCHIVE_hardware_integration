@@ -188,6 +188,8 @@ private:
     float dispenseLen_{0.03};
     float dispenseTime_{12};
     int numBuckets_{1};
+    float dispenseAmount_{9999};
+    bool dispenseStarted{false};
 
     // other //
     static PayloadControl* instance_;
