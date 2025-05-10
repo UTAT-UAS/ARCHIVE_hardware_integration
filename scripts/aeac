@@ -130,29 +130,35 @@ ir_launch() {
     tmux new-window
     tmux new-window
     tmux new-window
-    tmux rename-window -t "0:0" roslaunch
-    tmux rename-window -t "0:1" cv-model
-    tmux rename-window -t "0:2" source-server
-    tmux rename-window -t "0:3" source-sender
-    tmux rename-window -t "0:4" flight-stack
+    tmux new-window
+    tmux rename-window -t "0:0" roscore
+    tmux rename-window -t "0:1" roslaunch
+    tmux rename-window -t "0:2" cv-model
+    tmux rename-window -t "0:3" source-server
+    tmux rename-window -t "0:4" source-sender
+    tmux rename-window -t "0:5" flight-stack
     sleep 1
 
-    print_message "running roslaunch..."
-    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml location_file:="$LOCATION".yaml"
+    print_message "running roscore..."
+    tmux send-keys -t "0:0" "roscore"
     tmux send-keys -t "0:0" "ENTER"
     sleep 3
-    print_message "initializing cv model..."
-    tmux send-keys -t "0:1" "rosrun computer_vision ir_classical_detector.py"
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:1" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml location_file:="$LOCATION".yaml"
     tmux send-keys -t "0:1" "ENTER"
     sleep 3
-    print_message "initializing source server..."
-    tmux send-keys -t "0:2" "rosrun waypoint_navigator run_source_server.py"
+    print_message "initializing cv model..."
+    tmux send-keys -t "0:2" "rosrun computer_vision ir_classical_detector.py"
     tmux send-keys -t "0:2" "ENTER"
-    print_message "initializing source setter..."
-    tmux send-keys -t "0:3" "rosrun waypoint_navigator source_sender.py"
+    sleep 3
+    print_message "initializing source server..."
+    tmux send-keys -t "0:3" "rosrun waypoint_navigator run_source_server.py"
     tmux send-keys -t "0:3" "ENTER"
+    print_message "initializing source setter..."
+    tmux send-keys -t "0:4" "rosrun waypoint_navigator source_sender.py"
+    tmux send-keys -t "0:4" "ENTER"
     print_ready
-    tmux send-keys -t "0:4" "rosrun simulation_testing comp_task1.py --param_start"
+    tmux send-keys -t "0:5" "rosrun simulation_testing comp_task1.py --param_start"
 }
 
 bucket_launch() {
