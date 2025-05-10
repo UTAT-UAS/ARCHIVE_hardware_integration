@@ -138,7 +138,7 @@ ir_launch() {
     sleep 1
 
     print_message "running roslaunch..."
-    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml" location_file:="$LOCATION".yaml
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml location_file:="$LOCATION".yaml"
     tmux send-keys -t "0:0" "ENTER"
     sleep 3
     print_message "initializing cv model..."
@@ -224,7 +224,7 @@ setup_ircam() {
     exposure=100
     exposure_temp="input"
     while true; do
-        read -p "webcam exposure_temp (current $current) (default $exposure_temp): " exposure_temp
+        read -p "webcam exposure_temp (current $current) (default $exposure): " exposure_temp
         if [[ -z $exposure_temp ]]; then
             break
         fi
