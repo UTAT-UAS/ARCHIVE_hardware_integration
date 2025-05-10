@@ -2,7 +2,7 @@
 
 # Defaults
 GCS="100.64.0.1"
-GST="100.64.0.5"
+GST="100.64.0.1"
 DRONE="cyclone"
 LOCATION="utias"
 
