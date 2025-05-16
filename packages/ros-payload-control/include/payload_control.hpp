@@ -183,9 +183,10 @@ private:
     float stateSwitchStart_{0};
     // ros parameters for easy tuning
     float pickupLen_{2.0};
-    float pickupTime_{30};
+    float pickupTime_{10};
     float dispenseLen_{0.03};
     float dispenseTime_{12};
+    float hookOpenPos_{0.5};
 
     // other //
     static PayloadControl* instance_;

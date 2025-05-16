@@ -68,7 +68,7 @@ void PayloadControl::StopRetraction()
 {
     encoderRawISR_ = 0;
     encoderLen_ = 0;
-    stoppedEncoderLen_ = 0;
+    stoppedEncoderLen_ = 0.002;
     operation_ = OPCODE::STOPPED;
 }
 
@@ -91,7 +91,7 @@ void PayloadControl::Pickup()
 
             contServoWrite(1500);
             PositionControlLoop(encoderLen_);
-            HookControlLoop(0.6);
+            HookControlLoop(hookOpenPos_);
             SwitchState(State::UNSPOOL);    
             stateSwitchStart_ = millis();
             break;
@@ -100,13 +100,13 @@ void PayloadControl::Pickup()
 
             // if the encoder has reached the desired length with tolerances
             // wait for hook dynamics
-            if (millis() - stateSwitchStart_ <= 1000) {
+            if (millis() - stateSwitchStart_ <= 500) {
                 lastWeight_ = weight_;
                 waitTimerStart_ = millis();
                 break;
             }
             PositionControlLoop(pickupLen_);
-            HookControlLoop(0.6);
+            HookControlLoop(hookOpenPos_);
             if (millis() - waitTimerStart_ >= 1000) {  // check load with timeout to prevent drift 
                 lastLastWeight_ = lastWeight_;
                 lastLastWeight_ = lastWeight_;
@@ -130,7 +130,7 @@ void PayloadControl::Pickup()
 
         case State::WAIT:
             PositionControlLoop(stoppedEncoderLen_);
-            HookControlLoop(0.6);
+            HookControlLoop(hookOpenPos_);
             if (millis() - waitTimerStart_ >= pickupTime_ * 1000) {
                 stopDrop_ = false;
                 SwitchState(State::RESPOOL);
@@ -141,7 +141,7 @@ void PayloadControl::Pickup()
             if (encoderLen_ > 0.15) {
                 stopDrop_ = false;
                 PositionControlLoop(0.10);  // go back to 0 height with encoder fb
-                HookControlLoop(0.6);
+                HookControlLoop(hookOpenPos_);
                 waitTimerStart_ = millis();
             }
             else {
@@ -187,7 +187,7 @@ void PayloadControl::Dispense()
             break;
         case State::UNSPOOL:
             // wait for hook dynamics
-            if (millis() - waitTimerStart_ <= 1000) {
+            if (millis() - waitTimerStart_ <= 500) {
                 lastWeight_ = weight_;
                 break;
             }
@@ -238,7 +238,7 @@ void PayloadControl::Reset()
     switch (state_)
     {
     case State::IDLE:
-        HookControlLoop(0.6);
+        HookControlLoop(hookOpenPos_);
         VelocityControlLoop(-0.07);  // slowly retract
         waitTimerStart_ = millis();
         SwitchState(State::RESPOOL);
@@ -246,7 +246,7 @@ void PayloadControl::Reset()
     case State::RESPOOL:
         // wait for dynamics
         VelocityControlLoop(-0.07); 
-        if (millis() - waitTimerStart_ <= 1000) {
+        if (millis() - waitTimerStart_ <= 500) {
             break;
         }
         // state transition condition
@@ -263,7 +263,7 @@ void PayloadControl::Reset()
 void PayloadControl::Manual()
 {
     operationDone_ = false;
-    HookControlLoop(0.6);
+    HookControlLoop(hookOpenPos_);
     PositionControlLoop(manualServoSetpoint_);
     //VelocityControlLoop(manualServoSetpoint_);
     //contServoWrite(MOVEMENT_DOWN_THRESH);
