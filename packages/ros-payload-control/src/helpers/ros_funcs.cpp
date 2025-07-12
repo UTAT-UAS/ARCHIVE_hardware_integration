@@ -4,7 +4,7 @@ void PayloadControl::SetpointCb(const std_msgs::Float32 &msg)
 {
     instance_->manualServoSetpoint_ = msg.data;
 }
-
+    
 void PayloadControl::RecieveStateCb(const std_msgs::Int32 &msg)
 {
     instance_->operation_ = static_cast<OPCODE>(msg.data);
@@ -13,22 +13,26 @@ void PayloadControl::RecieveStateCb(const std_msgs::Int32 &msg)
 void PayloadControl::PublishServoCommand()
 {
     // ros
-    servoVelMsg_.data = servoOutput_;
+    //servoVelMsg_.data = servoOutput_;
     //servoVelocityPub_.publish(&servoVelMsg_); 
 }
 
 void PayloadControl::PublishSensorsFb()
 {
-    noInterrupts();
     encoderLenFbMsg_.data = encoderLen_;
-    interrupts();
-
-    forceMsg_.data = force_;
-    waterlevelMsg_.data = waterlevel_;
+    encoderVelMsg_.data = encoderVel_;
+    forceMsg_.header.stamp = nh_.now();
+    forceMsg_.point.x = force1_;
+    forceMsg_.point.y = force2_;
+    weightMsg_.data = weight_;
+    //weightMsg_.data = velPID_.velZ_.integral_ * kiVel_;
+    servoVelMsg_.data = servoOutput_;
 
     encoderLenPub_.publish(&encoderLenFbMsg_);
+    encoderVelPub_.publish(&encoderVelMsg_);
     forcePub_.publish(&forceMsg_);
-    waterlevelPub_.publish(&waterlevelMsg_);    
+    weightPub_.publish(&weightMsg_); 
+    servoVelocityPub_.publish(&servoVelMsg_);   
 }
 
 void PayloadControl::PublishOperationState()
