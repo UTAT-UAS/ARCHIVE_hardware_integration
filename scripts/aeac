@@ -1,0 +1,586 @@
+#!/usr/bin/env bash
+
+# Defaults
+GCS="100.64.0.1"
+GST="100.64.0.1"
+DRONE="cyclone"
+LOCATION="utias"
+
+# Color escape codes
+tblk='\e[0;30m' # Black - Regular
+tred='\e[0;31m' # Red
+tgrn='\e[0;32m' # Green
+tylw='\e[0;33m' # Yellow
+tblu='\e[0;34m' # Blue
+tpur='\e[0;35m' # Purple
+tcyn='\e[0;36m' # Cyan
+twht='\e[0;37m' # White
+rst='\e[0m'     # Text Reset
+
+print_help() {
+    echo -e $tcyn"AEAC AUTO LAUNCHER"$rst
+    echo ""
+    echo "Helper script to create a tmux session and run required setup scripts."
+    echo "Interactive mode allows setting params and customizing script launch."
+    echo ""
+    echo "run \"aeac -i\" for interactive mode"
+    echo ""
+    echo "ARGS:"
+    echo "-a AUTO       Auto launch using a preset mode (default parameters)"
+    echo "-i            Interactive mode"
+    echo "-u            Utility script mode"
+    echo "-h            This message"
+    echo ""
+    echo "AUTO:"
+    echo "[m]avros, [n]ormal, [i]r, [b]ucket, [c]amera, i[r] camera"
+    exit 0
+}
+
+print_logo() {
+    echo "                               /          "
+    echo "                              //          "
+    echo "                            .//           "
+    echo "   ************************/  |***********"
+    echo "     __    __  _______   / _  |  _______  "
+    echo "    / /   / / /_. .__/  / / | | /_. .__/  "
+    echo "   | |    | |   | |   / /_/\| '   | |     "
+    echo "   ' \___/ '   | |   / /    ||   | |      "
+    echo "    \_____/    '_' /./      .|   '_'      "
+    echo "******************//********||*********   "
+    echo "                 //         |/            "
+    echo "               //                         "
+    echo "             //                           "
+    echo "            /                             "
+}
+
+wait_for_tmux() {
+    while true; do
+        TMUXSESSIONS=$(tmux list-sessions 2>&1)
+        if [[ ! $TMUXSESSIONS =~ ^no ]]; then
+            sleep 0.1
+            break
+        fi
+        sleep 0.1
+    done
+}
+
+print_message() {
+    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;34m$1\e[0m\""
+    tmux send-keys -t "0:flight-stack" "ENTER"
+}
+
+print_ready() {
+    tmux send-keys -t "0:flight-stack" "echo -e \"\e[0;32mALL SCRIPTS STARTED\e[0m\""
+    tmux send-keys -t "0:flight-stack" "ENTER"
+}
+
+mavros_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
+
+    tmux send-keys -t "0:0" "roslaunch simulation_testing mavros.launch gcs_url:=udp://:14551@$GCS:14550"
+    tmux send-keys -t "0:0" "ENTER"
+    print_ready
+}
+
+normal_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
+
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real.launch gcs_url:=udp://:14551@$GCS:14550 param_file:="$DRONE"_real.yaml"
+    tmux send-keys -t "0:0" "ENTER"
+    print_ready
+}
+
+camera_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
+    sleep 1
+
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
+    tmux send-keys -t "0:0" "ENTER"
+    sleep 3
+    print_ready
+}
+
+ir_camera_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux rename-window -t "0:0" roslaunch
+    tmux rename-window -t "0:1" flight-stack
+    sleep 1
+
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:0" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml"
+    tmux send-keys -t "0:0" "ENTER"
+    sleep 3
+    print_ready
+}
+
+ir_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux new-window
+    tmux new-window
+    tmux new-window
+    tmux new-window
+    tmux rename-window -t "0:0" roscore
+    tmux rename-window -t "0:1" roslaunch
+    tmux rename-window -t "0:2" cv-model
+    tmux rename-window -t "0:3" source-server
+    tmux rename-window -t "0:4" source-sender
+    tmux rename-window -t "0:5" flight-stack
+    sleep 1
+
+    print_message "running roscore..."
+    tmux send-keys -t "0:0" "roscore"
+    tmux send-keys -t "0:0" "ENTER"
+    sleep 3
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:1" "roslaunch simulation_testing real_ir.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real_ir.yaml location_file:="$LOCATION".yaml"
+    tmux send-keys -t "0:1" "ENTER"
+    sleep 3
+    print_message "initializing cv model..."
+    tmux send-keys -t "0:2" "rosrun computer_vision ir_classical_detector.py"
+    tmux send-keys -t "0:2" "ENTER"
+    sleep 3
+    print_message "initializing source server..."
+    tmux send-keys -t "0:3" "rosrun waypoint_navigator run_source_server.py"
+    tmux send-keys -t "0:3" "ENTER"
+    print_message "initializing source setter..."
+    tmux send-keys -t "0:4" "rosrun waypoint_navigator source_sender.py"
+    tmux send-keys -t "0:4" "ENTER"
+    print_ready
+    tmux send-keys -t "0:5" "rosrun simulation_testing comp_task1.py --param_start"
+}
+
+bucket_launch() {
+    wait_for_tmux
+    tmux new-window
+    tmux new-window
+    tmux new-window
+    tmux new-window
+    tmux rename-window -t "0:0" roscore
+    tmux rename-window -t "0:1" roslaunch
+    tmux rename-window -t "0:2" payload
+    tmux rename-window -t "0:3" cv-model
+    tmux rename-window -t "0:4" flight-stack
+    sleep 1
+
+    print_message "running roscore..."
+    tmux send-keys -t "0:0" "roscore"
+    tmux send-keys -t "0:0" "ENTER"
+    sleep 3
+    print_message "running roslaunch..."
+    tmux send-keys -t "0:1" "roslaunch simulation_testing real_cam.launch gcs_url:=udp://:14551@$GCS:14550 gst_ip:=$GST param_file:="$DRONE"_real.yaml"
+    tmux send-keys -t "0:1" "ENTER"
+    sleep 3
+    print_message "running rosserial..."
+    tmux send-keys -t "0:2" "rosrun rosserial_python serial_node.py _port:=/dev/payload_serial _baud:=115200"
+    tmux send-keys -t "0:2" "ENTER"
+    print_message "initializing cv model..."
+    tmux send-keys -t "0:3" "rosrun computer_vision bucket_detector_p.py"
+    tmux send-keys -t "0:3" "ENTER"
+    sleep 3
+    print_ready
+    tmux send-keys -t "0:4" "rosrun simulation_testing comp_task2.py"
+}
+
+setup_webcam() {
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 &>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e $tred"Unable to open webcam, quitting"$rst
+        exit 1
+    fi
+
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto=1
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_auto_priority=0
+
+    current="$(v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -C exposure_absolute)"
+
+    exposure=3
+    exposure_temp="input"
+    while true; do
+        read -p "webcam exposure_temp (current $current) (default $exposure): " exposure_temp
+        if [[ -z $exposure_temp ]]; then
+            break
+        fi
+        if [[ $exposure_temp =~ ^[0-9]+$ ]]; then
+            exposure=$exposure_temp
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    v4l2-ctl -d /dev/v4l/by-id/usb-EMEET_HD_Webcam_eMeet_C960_A250314001623283-video-index0 -c exposure_absolute=$exposure
+}
+setup_ircam() {
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 &>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e $tred"Unable to open ircam, quitting"$rst
+        exit 1
+    fi
+
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_auto=1
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_auto_priority=0
+
+    current="$(v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -C exposure_absolute)"
+
+    exposure=100
+    exposure_temp="input"
+    while true; do
+        read -p "webcam exposure_temp (current $current) (default $exposure): " exposure_temp
+        if [[ -z $exposure_temp ]]; then
+            break
+        fi
+        if [[ $exposure_temp =~ ^[0-9]+$ ]]; then
+            exposure=$exposure_temp
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    v4l2-ctl -d /dev/v4l/by-id/usb-Suyin_HD_Camera_200910120001-video-index0 -c exposure_absolute=$exposure
+}
+
+auto_launch() {
+    case ${1} in
+    m)
+        mavros_launch &
+        tmux
+        exit 0
+        ;;
+    n)
+        normal_launch &
+        tmux
+        exit 0
+        ;;
+    i)
+        setup_ircam
+        ir_launch &
+        tmux
+        exit 0
+        ;;
+    b)
+        setup_webcam
+        bucket_launch &
+        tmux
+        exit 0
+        ;;
+    c)
+        setup_webcam
+        camera_launch &
+        tmux
+        exit 0
+        ;;
+    r)
+        setup_ircam
+        ir_camera_launch &
+        tmux
+        exit 0
+        ;;
+    esac
+    echo -e $tred"Auto launch option \"${1}\" not found"$rst
+}
+
+drone_input() {
+    drone_temp="input"
+    while true; do
+        echo "select drone - [c]yclone, [v]ulcan, [t]omathy"
+        read -p "(default $DRONE): " drone_temp
+        if [[ -z $drone_temp ]]; then
+            break
+        fi
+        if [[ $drone_temp =~ ^(cyclone|vulcan|tomathy)$ ]]; then
+            DRONE=$drone_temp
+            break
+        fi
+        if [[ $drone_temp =~ ^[cvt]{1}$ ]]; then
+            if [[ $drone_temp =~ ^c$ ]]; then
+                DRONE="cyclone"
+                echo "  cyclone"
+                break
+            fi
+            if [[ $drone_temp =~ ^v$ ]]; then
+                DRONE="vulcan"
+                echo "  vulcan"
+                break
+            fi
+            if [[ $drone_temp =~ ^t$ ]]; then
+                DRONE="tomathy"
+                echo "  tomathy"
+                break
+            fi
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+}
+
+gcs_input() {
+    gcs_temp="input"
+    while true; do
+        read -p "gcs_url (qgroundcontrol) (default $GCS): " gcs_temp
+        if [[ -z $gcs_temp ]]; then
+            break
+        fi
+        if [[ $gcs_temp =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            GCS=$gcs_temp
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+}
+
+gst_input() {
+    gst_temp="input"
+    while true; do
+        read -p "gst_url (gstreamer) (default $GST): " gst_temp
+        if [[ -z $gst_temp ]]; then
+            break
+        fi
+        if [[ $gst_temp =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            GST=$gst_temp
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+}
+
+ip_input() {
+    gcs_input
+    gst_input
+}
+
+location_input() {
+    location_temp="input"
+    while true; do
+        echo "select location - [u]tias, [k]offler, [a]lberta"
+        read -p "(default $LOCATION): " location_temp
+        if [[ -z $location_temp ]]; then
+            break
+        fi
+        if [[ $location_temp =~ ^(utias|koffler|alberta)$ ]]; then
+            LOCATION=$location_temp
+            break
+        fi
+        if [[ $location_temp =~ ^[uka]{1}$ ]]; then
+            if [[ $location_temp =~ ^u$ ]]; then
+                LOCATION="utias"
+                echo "  utias"
+                break
+            fi
+            if [[ $location_temp =~ ^k$ ]]; then
+                LOCATION="koffler"
+                echo "  koffler"
+                break
+            fi
+            if [[ $location_temp =~ ^a$ ]]; then
+                LOCATION="alberta"
+                echo "  alberta"
+                break
+            fi
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+}
+
+confirm_inputs() {
+    echo "Final parameters:"
+    echo "  gcs_url: "$GCS
+    echo "  gst_url: "$GST
+    echo "  drone:   "$DRONE
+    read -p "Any key to launch scripts, Ctrl-c to quit"
+}
+
+auto_select() {
+    auto="input"
+    while true; do
+        echo "mavros [m]"
+        echo "normal [n]"
+        echo "ir:    [i]"
+        echo "bucket [b]"
+        echo "camera [c]"
+        echo "ir cam [r]"
+        read -p "> " auto
+        if [[ $auto =~ ^[mnibcr]{1}$ ]]; then
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    location_input
+    ip_input
+    drone_input
+    confirm_inputs
+
+    auto_launch $auto
+}
+
+computer_config() {
+    comp="input"
+    while true; do
+        echo "Configure .bashrc"
+        echo "[t]ailnet mode (cellular data link)"
+        echo "[a]ntenna mode"
+        read -p "> " comp
+        # TODO: this only works with the two modes lol
+        if [[ $comp =~ ^[t]{1}$ ]]; then
+            if grep -q "#==aeac mode antenna" $HOME/.bashrc; then
+                sed -i '/#==aeac mode antenna/c\#==aeac mode tailnet' $HOME/.bashrc
+                sed -i '/#==aeac-antenna/s/^/# /' $HOME/.bashrc
+            else
+                echo "already in tailnet mode"
+            fi
+            break
+        fi
+        if [[ $comp =~ ^[a]{1}$ ]]; then
+            if grep -q "#==aeac mode tailnet" $HOME/.bashrc; then
+                sed -i '/#==aeac mode tailnet/c\#==aeac mode antenna' $HOME/.bashrc
+                sed -i '/#==aeac-antenna/s/^..//' $HOME/.bashrc
+            else
+                echo "already in antenna mode"
+            fi
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    exit 0
+}
+
+power_choice() {
+    power_input="input"
+    echo -e "[s]hutdown, [r]eboot"
+    while true; do
+        read -p "> " power_input
+        if [[ $power_input =~ ^s$ ]]; then
+            sudo systemctl poweroff
+            break
+        fi
+        if [[ $power_input =~ ^r$ ]]; then
+            sudo systemctl reboot
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+}
+
+utility_mode() {
+    util_input="input"
+    echo -e "Power                  $tblu[1]$rst"
+    echo -e "Camera                 $tblu[2]$rst"
+    echo -e "IR Camera              $tblu[3]$rst"
+    while true; do
+        read -p "> " util_input
+        if [[ $util_input =~ ^1$ ]]; then
+            power_choice
+            break
+        fi
+        if [[ $util_input =~ ^2$ ]]; then
+            setup_webcam
+            break
+        fi
+        if [[ $util_input =~ ^3$ ]]; then
+            setup_ircam
+            break
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    exit 0
+}
+
+interactive_mode() {
+
+    echo -e $tblu
+
+    print_logo
+
+    echo -e $rst
+
+    # template
+    # VARNAME="input"
+    # while true; do
+    #     read -p "" VARNAME
+    #     if [[ $VARNAME =~ ^$ ]]; then
+    #         break
+    #     fi
+    #     echo -e $tred"invalid input"$rst
+    # done
+
+    flightstack="input"
+    echo -e "UNUSED                  $tblu[1]$rst"
+    echo -e "Launch MAVROS (GCS):    $tblu[2]$rst"
+    echo -e "Select auto launcher:   $tblu[3]$rst"
+    echo -e "Computer Configuration: $tblu[4]$rst"
+    while true; do
+        read -p "> " flightstack
+        if [[ $flightstack =~ ^1$ ]]; then
+            break
+        fi
+        if [[ $flightstack =~ ^2$ ]]; then
+            echo -e $tgrn"MAVROS Launcher"$rst
+            gcs_input
+            mavros_launch &
+            tmux
+            exit 0
+        fi
+        if [[ $flightstack =~ ^3$ ]]; then
+            auto_select
+        fi
+        if [[ $flightstack =~ ^4$ ]]; then
+            computer_config
+        fi
+        echo -e $tred"invalid input"$rst
+    done
+
+    # Perhaps a full custom launch configurator could go here, but my bash skills are not strong enough
+
+    exit 0
+}
+
+check_runtime() {
+    if [[ ! -z $TMUX ]]; then
+        echo -e $tred"Running inside a tmux session forbidden"$rst
+        exit 1
+    fi
+
+    TMUXSESSIONS=$(tmux list-sessions 2>&1)
+    if [[ ! $TMUXSESSIONS =~ ^no && ! $TMUXSESSIONS =~ ^error ]]; then
+        echo -e $tred"Running script with existing tmux sessions not supported"$rst
+        exit 1
+    fi
+
+}
+
+if [ "$#" -eq 0 ]; then
+    print_help
+    exit 0
+fi
+
+# TODO parser for params like --gst instead of having to use auto selector
+# probably switch to getopt because we don't need cross platform
+
+while getopts a:hiu opts; do
+    case ${opts} in
+    i)
+        check_runtime
+        interactive_mode
+        ;;
+    a)
+        check_runtime
+        auto_launch $OPTARG
+        ;;
+    u) utility_mode ;;
+    h) print_help ;;
+    esac
+done
